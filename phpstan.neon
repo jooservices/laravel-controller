@@ -1,0 +1,9 @@
+includes:
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+
+parameters:
+    level: max
+    paths:
+        - src
+    ignoreErrors:
+        - '#Trait JOOservices\\LaravelController\\Traits\\HandlesApiExceptions is used zero times#'

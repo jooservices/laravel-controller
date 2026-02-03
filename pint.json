@@ -1,0 +1,13 @@
+{
+    "preset": "laravel",
+    "rules": {
+        "php_unit_method_casing": {
+            "case": "camel_case"
+        },
+        "concat_space": {
+            "spacing": "one"
+        },
+        "new_with_braces": true,
+        "class_definition": false
+    }
+}

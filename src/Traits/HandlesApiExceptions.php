@@ -22,7 +22,9 @@ trait HandlesApiExceptions
     public function renderApiException(Throwable $exception): JsonResponse
     {
         if ($exception instanceof ValidationException) {
-            return $this->unprocessable($exception->errors());
+            $message = $this->validationExceptionMessage($exception);
+
+            return $this->unprocessable($message, $exception->errors());
         }
 
         if ($exception instanceof ModelNotFoundException || $exception instanceof NotFoundHttpException) {
@@ -44,5 +46,24 @@ trait HandlesApiExceptions
         return $this->internalError(
             config('app.debug') ? $exception->getMessage() : 'Server Error'
         );
+    }
+
+    /**
+     * Resolve the top-level message for ValidationException from config.
+     * Config validation.message: string = fixed message, or "first" = first validation error message.
+     */
+    protected function validationExceptionMessage(ValidationException $exception): string
+    {
+        $configMessage = config('laravel-controller.validation.message', 'Unprocessable Entity');
+        $configMessage = is_string($configMessage) ? $configMessage : 'Unprocessable Entity';
+
+        if (strtolower($configMessage) === 'first') {
+            $errors = $exception->errors();
+            $first = reset($errors);
+
+            return is_array($first) ? (string) reset($first) : (string) $first;
+        }
+
+        return $configMessage;
     }
 }

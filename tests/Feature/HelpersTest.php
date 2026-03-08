@@ -24,7 +24,7 @@ class HelpersTest extends TestCase
         $this->assertEquals('Slow down', $data['message']);
     }
 
-    public function testPaginatedFormatsCorrectly()
+    public function testRespondWithPaginationFormatsCorrectly()
     {
         $controller = new class()
         {
@@ -34,7 +34,7 @@ class HelpersTest extends TestCase
         $items = collect(['a', 'b', 'c']);
         $paginator = new LengthAwarePaginator($items, 10, 5, 1);
 
-        $response = $controller->paginated($paginator);
+        $response = $controller->respondWithPagination($paginator);
         $data = $response->getData(true);
 
         $this->assertEquals(['a', 'b', 'c'], $data['data']);

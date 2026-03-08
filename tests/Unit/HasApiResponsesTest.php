@@ -77,7 +77,7 @@ class HasApiResponsesTest extends TestCase
     public function testUnprocessableResponse()
     {
         $errors = ['field' => ['Required']];
-        $response = $this->traitObject->unprocessable($errors);
+        $response = $this->traitObject->unprocessable(errors: $errors);
         $this->assertEquals(422, $response->getStatusCode());
         $this->assertEquals($errors, $response->getData(true)['errors']);
     }
@@ -116,5 +116,84 @@ class HasApiResponsesTest extends TestCase
 
         $response = $this->traitObject->success();
         $this->assertEquals($uuid, $response->getData(true)['trace_id']);
+    }
+
+    public function testSuccessWithWarnings()
+    {
+        $warnings = ['deprecated' => 'This endpoint will be removed in v2.'];
+        $response = $this->traitObject->success(['id' => 1], 'Ok', 200, [], $warnings);
+        $data = $response->getData(true);
+        $this->assertArrayHasKey('warnings', $data);
+        $this->assertEquals($warnings, $data['warnings']);
+    }
+
+    public function testAcceptedResponse()
+    {
+        $response = $this->traitObject->accepted(['job_id' => 'abc'], 'Request accepted');
+        $this->assertEquals(202, $response->getStatusCode());
+        $this->assertEquals('Request accepted', $response->getData(true)['message']);
+        $this->assertEquals(['job_id' => 'abc'], $response->getData(true)['data']);
+    }
+
+    public function testConflictResponse()
+    {
+        $response = $this->traitObject->conflict('Resource already exists', ['field' => 'email']);
+        $this->assertEquals(409, $response->getStatusCode());
+        $this->assertFalse($response->getData(true)['success']);
+        $this->assertEquals(['field' => 'email'], $response->getData(true)['errors']);
+    }
+
+    public function testGoneResponse()
+    {
+        $response = $this->traitObject->gone('Resource has been permanently removed');
+        $this->assertEquals(410, $response->getStatusCode());
+        $this->assertEquals('Resource has been permanently removed', $response->getData(true)['message']);
+    }
+
+    public function testNotFoundReturnsCorrectStatusAndMessage()
+    {
+        $response = $this->traitObject->notFound('User not found');
+        $this->assertEquals(404, $response->getStatusCode());
+        $this->assertEquals('User not found', $response->getData(true)['message']);
+    }
+
+    public function testCreatedReturnsCorrectStatusAndMessage()
+    {
+        $response = $this->traitObject->created(['id' => 99]);
+        $this->assertEquals(201, $response->getStatusCode());
+        $this->assertEquals('Created', $response->getData(true)['message']);
+    }
+
+    public function testNoContentReturnsCorrectStatus()
+    {
+        $response = $this->traitObject->noContent();
+        $this->assertEquals(204, $response->getStatusCode());
+    }
+
+    public function testRespondWithItemFallsBackToSuccessWhenClassMissing()
+    {
+        $response = $this->traitObject->respondWithItem(['id' => 1, 'name' => 'Test'], 'NonExistentResource');
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals(['id' => 1, 'name' => 'Test'], $response->getData(true)['data']);
+    }
+
+    public function testRespondWithPaginationIncludesLinksWhenConfigEnabled()
+    {
+        config(['laravel-controller.pagination_links' => true]);
+        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+            [['id' => 1], ['id' => 2]],
+            10,
+            2,
+            1,
+            ['path' => request()->url()]
+        );
+        $response = $this->traitObject->respondWithPagination($paginator);
+        $data = $response->getData(true);
+        $this->assertArrayHasKey('meta', $data);
+        $this->assertArrayHasKey('links', $data['meta']);
+        $this->assertArrayHasKey('first', $data['meta']['links']);
+        $this->assertArrayHasKey('last', $data['meta']['links']);
+        $this->assertArrayHasKey('prev', $data['meta']['links']);
+        $this->assertArrayHasKey('next', $data['meta']['links']);
     }
 }

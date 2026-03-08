@@ -18,7 +18,12 @@ class LaravelControllerServiceProvider extends ServiceProvider
     {
         $this->publishes([
             __DIR__ . '/../config/laravel-controller.php' => config_path('laravel-controller.php'),
-        ], 'laravel-controller-config');
+        ], 'config');
+
+        $this->loadTranslationsFrom(__DIR__ . '/../../resources/lang', 'laravel-controller');
+        $this->publishes([
+            __DIR__ . '/../../resources/lang' => lang_path('vendor/laravel-controller'),
+        ], 'laravel-controller-lang');
 
         // Load Package Routes (if enabled)
         if (config('laravel-controller.routes.enabled', true)) {

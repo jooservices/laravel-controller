@@ -55,6 +55,7 @@ trait HandlesApiExceptions
     protected function validationExceptionMessage(ValidationException $exception): string
     {
         $configMessage = config('laravel-controller.validation.message', 'Unprocessable Entity');
+        $configMessage = is_string($configMessage) ? $configMessage : 'Unprocessable Entity';
 
         if (strtolower($configMessage) === 'first') {
             $errors = $exception->errors();

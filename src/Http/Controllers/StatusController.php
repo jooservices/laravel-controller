@@ -49,6 +49,8 @@ class StatusController extends BaseApiController
 
     /**
      * Run configured health checks and return results. Each check runs with optional timeout.
+     * Note: The timeout only prevents starting new checks after the deadline; a single
+     * blocking check (e.g. DB connect) can still hang the request until it completes.
      *
      * @param  array<int, string>  $checkNames  e.g. ['database', 'cache', 'queue']
      * @return array<string, array{ok: bool, message?: string}>
@@ -68,7 +70,10 @@ class StatusController extends BaseApiController
             try {
                 $results[$name] = $this->runOneCheck($name);
             } catch (Throwable $e) {
-                $results[$name] = ['ok' => false, 'message' => $e->getMessage()];
+                $results[$name] = [
+                    'ok' => false,
+                    'message' => $this->healthCheckFailureMessage($e),
+                ];
             }
         }
 
@@ -133,5 +138,14 @@ class StatusController extends BaseApiController
         $version = config('app.version', Application::VERSION);
 
         return is_string($version) ? $version : Application::VERSION;
+    }
+
+    /**
+     * Return a safe failure message for health checks. Avoids leaking internal details
+     * (e.g. DB credentials, paths) unless app.debug is true.
+     */
+    protected function healthCheckFailureMessage(Throwable $e): string
+    {
+        return config('app.debug', false) ? $e->getMessage() : 'check failed';
     }
 }

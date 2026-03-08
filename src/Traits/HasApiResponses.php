@@ -127,10 +127,17 @@ trait HasApiResponses
 
     /**
      * Return an unprocessable entity response (422). Validation errors go in $errors.
+     * For backward compatibility, the first argument may be an array of errors (message then defaults).
      */
-    public function unprocessable(string $message = 'Unprocessable Entity', mixed $errors = null): JsonResponse
+    public function unprocessable(string|array $messageOrErrors = 'Unprocessable Entity', mixed $errors = null): JsonResponse
     {
-        $msg = $message === 'Unprocessable Entity' ? $this->trans('Unprocessable Entity', 'unprocessable') : $message;
+        if (is_array($messageOrErrors)) {
+            $errors = $messageOrErrors;
+            $messageOrErrors = 'Unprocessable Entity';
+        }
+        $msg = $messageOrErrors === 'Unprocessable Entity'
+            ? $this->trans('Unprocessable Entity', 'unprocessable')
+            : $messageOrErrors;
 
         return $this->error($msg, Response::HTTP_UNPROCESSABLE_ENTITY, $errors);
     }
@@ -191,9 +198,9 @@ trait HasApiResponses
         }
 
         $successCodes = config('laravel-controller.success_codes');
-        $effectiveSuccess = is_array($successCodes)
-            ? in_array($code, $successCodes, true)
-            : $success;
+        $effectiveSuccess = ! $success
+            ? false
+            : (is_array($successCodes) ? in_array($code, $successCodes, true) : $success);
 
         $payload = [
             config('laravel-controller.keys.success', 'success') => $effectiveSuccess,

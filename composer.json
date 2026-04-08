@@ -20,7 +20,7 @@
         "captainhook/captainhook": "^5.23",
         "captainhook/plugin-composer": "^5.3",
         "orchestra/testbench": "^10.0",
-        "phpunit/phpunit": "^12.0",
+        "phpunit/phpunit": "^12.0 || ^13.0",
         "laravel/pint": "^1.0",
         "phpstan/phpstan": "^1.10",
         "phpmd/phpmd": "^2.15",

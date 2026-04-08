@@ -1,9 +1,10 @@
 # JOOservices Laravel Controller
 
-[![CI](https://github.com/jooservices/laravel-controller/actions/workflows/ci.yml/badge.svg)](https://github.com/jooservices/laravel-controller/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/jooservices/laravel-controller/branch/develop/graph/badge.svg)](https://codecov.io/gh/jooservices/laravel-controller)
+[![CI](https://github.com/jooservices/laravel-controller/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/jooservices/laravel-controller/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/jooservices/laravel-controller/badge)](https://securityscorecards.dev/viewer/?uri=github.com/jooservices/laravel-controller)
 [![PHP Version](https://img.shields.io/badge/PHP-8.5%2B-blue.svg)](https://www.php.net/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Packagist Version](https://img.shields.io/packagist/v/jooservices/laravel-controller)](https://packagist.org/packages/jooservices/laravel-controller)
 
 The **JOOservices Laravel Controller** package provides a standardized base controller for Laravel APIs with consistent envelopes, pagination helpers, status endpoints, and exception-to-response mapping.

@@ -1,6 +1,6 @@
 # Examples
 
-The examples have moved into the structured documentation tree.
+The JOOservices Laravel Controller examples have moved into the structured documentation tree.
 
 Use these canonical example pages instead:
 

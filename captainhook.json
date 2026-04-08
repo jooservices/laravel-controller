@@ -43,7 +43,7 @@
         "enabled": true,
         "actions": [
             {
-                "action": "echo '🔒 Scanning commits for secrets...' && gitleaks detect --verbose --redact --config=.gitleaks.toml --log-opts=\"origin/main..HEAD\" || echo 'Note: Gitleaks scan of unpushed commits (install gitleaks: brew install gitleaks)'",
+                "action": "if command -v gitleaks >/dev/null 2>&1; then echo '🔒 Scanning commits for secrets...' && gitleaks detect --verbose --redact --config=.gitleaks.toml --log-opts=\"origin/develop..HEAD\"; else echo 'Note: Gitleaks scan of unpushed commits skipped because gitleaks is not installed (brew install gitleaks)'; fi",
                 "conditions": []
             },
             {

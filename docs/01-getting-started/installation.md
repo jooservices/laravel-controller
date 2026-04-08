@@ -1,6 +1,6 @@
 # Installation
 
-Install the package with Composer:
+Install JOOservices Laravel Controller with Composer:
 
 ```bash
 composer require jooservices/laravel-controller

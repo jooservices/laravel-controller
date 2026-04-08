@@ -1,6 +1,6 @@
 # Quick Start
 
-Create a controller that extends `JOOservices\LaravelController\Http\Controllers\BaseApiController`.
+JOOservices Laravel Controller lets host applications start with a base controller that extends `JOOservices\LaravelController\Http\Controllers\BaseApiController`.
 
 ```php
 namespace App\Http\Controllers\Api\V1;

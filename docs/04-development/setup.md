@@ -41,7 +41,7 @@ The relevant hook commands are:
 
 ```bash
 gitleaks protect --staged --verbose --redact --config=.gitleaks.toml
-gitleaks detect --verbose --redact --config=.gitleaks.toml --log-opts="origin/main..HEAD"
+gitleaks detect --verbose --redact --config=.gitleaks.toml --log-opts="origin/develop..HEAD"
 ```
 
 Useful local commands:

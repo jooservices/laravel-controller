@@ -1,6 +1,6 @@
 # Response Reference
 
-This document describes the maintained response contract. Keys are configurable, but examples use the default names.
+This JOOservices Laravel Controller reference describes the maintained response contract. Keys are configurable, but examples use the default names.
 
 ## Top-level keys
 

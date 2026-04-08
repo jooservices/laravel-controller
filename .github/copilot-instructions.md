@@ -1,6 +1,6 @@
 # Copilot Instructions For `jooservices/laravel-controller`
 
-Read [AGENTS.md](/Users/vietvu/Sites/JOOservices/laravel-controller/AGENTS.md) as the primary repository policy.
+Read [AGENTS.md](../AGENTS.md) as the primary repository policy.
 
 When generating or editing code:
 

@@ -1,6 +1,6 @@
 # Claude Code Instructions For `jooservices/laravel-controller`
 
-Read [AGENTS.md](/Users/vietvu/Sites/JOOservices/laravel-controller/AGENTS.md) first.
+Read [AGENTS.md](AGENTS.md) first.
 
 When working in this repository:
 

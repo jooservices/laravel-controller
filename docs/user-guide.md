@@ -1,6 +1,6 @@
 # User Guide
 
-This legacy entry point now maps to the structured documentation set.
+This legacy JOOservices Laravel Controller entry point now maps to the structured documentation set.
 
 Use these canonical documents instead:
 

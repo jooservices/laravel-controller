@@ -1,0 +1,36 @@
+# Gitleaks Configuration for JOOservices Laravel Controller
+# Documentation: https://github.com/gitleaks/gitleaks
+
+title = "JOOservices Laravel Controller Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlisted files and patterns"
+
+paths = [
+  '''\.txt$''',
+  '''^tests/Fixtures/''',
+  '''^\.gitleaks\.toml$''',
+  '''composer\.lock$''',
+  '''^vendor/''',
+  '''^build/''',
+]
+
+regexes = [
+  '''example[_-]?key''',
+  '''fake[_-]?secret''',
+  '''dummy[_-]?token''',
+  '''test[_-]?password''',
+  '''YOUR[_-]?API[_-]?KEY''',
+  '''REPLACE[_-]?ME''',
+  '''CHANGEME''',
+  '''xxxxxxxx''',
+]
+
+stopwords = [
+  '''example''',
+  '''sample''',
+  '''placeholder''',
+]

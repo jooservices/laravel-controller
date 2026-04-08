@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use JOOservices\LaravelController\Traits\HandlesApiExceptions;
 use Tests\TestCase;
@@ -34,7 +35,7 @@ class ExceptionHandlingTest extends TestCase
             use HandlesApiExceptions;
         };
 
-        $validator = \Illuminate\Support\Facades\Validator::make([], ['field' => 'required']);
+        $validator = Validator::make([], ['field' => 'required']);
         try {
             $validator->validate();
         } catch (ValidationException $e) {

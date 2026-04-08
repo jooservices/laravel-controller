@@ -17,6 +17,8 @@
         "illuminate/routing": "^12.0"
     },
     "require-dev": {
+        "captainhook/captainhook": "^5.23",
+        "captainhook/plugin-composer": "^5.3",
         "orchestra/testbench": "^10.0",
         "phpunit/phpunit": "^12.0",
         "laravel/pint": "^1.0",
@@ -37,8 +39,35 @@
     },
     "scripts": {
         "test": "vendor/bin/phpunit",
-        "lint": "vendor/bin/pint; vendor/bin/phpstan analyse --memory-limit=512M; php -d error_reporting=24575 vendor/bin/phpmd src text phpmd.xml; vendor/bin/phpcs",
-        "analyse": "vendor/bin/phpstan analyse --memory-limit=512M"
+        "test:coverage": "vendor/bin/phpunit --coverage-html build/coverage --coverage-clover build/coverage.xml",
+        "lint:pint": "vendor/bin/pint --test",
+        "lint:pint:fix": "vendor/bin/pint",
+        "lint:phpcs": "vendor/bin/phpcs --standard=phpcs.xml",
+        "lint:phpstan": "XDEBUG_MODE=off vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=512M",
+        "lint:phpmd": "php -d error_reporting=24575 vendor/bin/phpmd src text phpmd.xml",
+        "lint": [
+            "@lint:pint",
+            "@lint:phpcs",
+            "@lint:phpstan"
+        ],
+        "lint:all": [
+            "@lint",
+            "@lint:phpmd"
+        ],
+        "lint:fix": [
+            "@lint:pint:fix"
+        ],
+        "analyse": "@lint:phpstan",
+        "check": [
+            "@lint:all",
+            "@test"
+        ],
+        "ci": [
+            "@lint:all",
+            "@test:coverage"
+        ],
+        "post-install-cmd": "captainhook install --force --skip-existing",
+        "post-update-cmd": "captainhook install --force --skip-existing"
     },
     "extra": {
         "laravel": {
@@ -50,6 +79,7 @@
     "config": {
         "sort-packages": true,
         "allow-plugins": {
+            "captainhook/plugin-composer": true,
             "pestphp/pest-plugin": true
         }
     },

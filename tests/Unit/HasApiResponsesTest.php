@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use JOOservices\LaravelController\Traits\HasApiResponses;
 use Tests\TestCase;
@@ -180,7 +181,7 @@ class HasApiResponsesTest extends TestCase
     public function testRespondWithPaginationIncludesLinksWhenConfigEnabled()
     {
         config(['laravel-controller.pagination_links' => true]);
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+        $paginator = new LengthAwarePaginator(
             [['id' => 1], ['id' => 2]],
             10,
             2,
@@ -195,5 +196,13 @@ class HasApiResponsesTest extends TestCase
         $this->assertArrayHasKey('last', $data['meta']['links']);
         $this->assertArrayHasKey('prev', $data['meta']['links']);
         $this->assertArrayHasKey('next', $data['meta']['links']);
+    }
+
+    public function testSuccessResponseDoesNotIncludeWarningsWhenEmpty()
+    {
+        $response = $this->traitObject->success(['foo' => 'bar']);
+        $data = $response->getData(true);
+
+        $this->assertArrayNotHasKey('warnings', $data);
     }
 }

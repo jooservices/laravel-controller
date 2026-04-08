@@ -1,0 +1,49 @@
+# Automatically label PRs based on changed files
+
+'tests':
+  - changed-files:
+    - any-glob-to-any-file: 'tests/**/*'
+
+'documentation':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**.md'
+      - 'docs/**/*'
+
+'dependencies':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'composer.json'
+      - 'composer.lock'
+
+'ci/cd':
+  - changed-files:
+    - any-glob-to-any-file: '.github/**/*'
+
+'configuration':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**.xml'
+      - '**.neon'
+      - 'pint.json'
+
+'source':
+  - changed-files:
+    - any-glob-to-any-file: 'src/**/*'
+
+'routes':
+  - changed-files:
+    - any-glob-to-any-file: 'routes/**/*'
+
+'translations':
+  - changed-files:
+    - any-glob-to-any-file: 'resources/lang/**/*'
+
+'ai':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'ai/**/*'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - '.github/copilot-instructions.md'
+      - '.github/skills/**/*'

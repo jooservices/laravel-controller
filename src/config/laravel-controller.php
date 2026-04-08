@@ -1,6 +1,19 @@
 <?php
 
 return [
+    /*
+    |--------------------------------------------------------------------------
+    | Custom Response Formatter
+    |--------------------------------------------------------------------------
+    |
+    | Provide a class name that implements
+    | JOOservices\LaravelController\Contracts\ResponseFormatter to fully
+    | control the final JSON envelope. When null, the package uses its default
+    | standardized response shape and key mapping.
+    |
+    */
+    'response_formatter' => null,
+
     'keys' => [
         'success' => 'success',
         'code' => 'code',

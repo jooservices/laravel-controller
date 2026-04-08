@@ -144,8 +144,8 @@ class StatusController extends BaseApiController
      * Return a safe failure message for health checks. Avoids leaking internal details
      * (e.g. DB credentials, paths) unless app.debug is true.
      */
-    protected function healthCheckFailureMessage(Throwable $e): string
+    protected function healthCheckFailureMessage(Throwable $exception): string
     {
-        return config('app.debug', false) ? $e->getMessage() : 'check failed';
+        return config('app.debug', false) ? $exception->getMessage() : 'check failed';
     }
 }

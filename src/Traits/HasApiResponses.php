@@ -2,14 +2,23 @@
 
 namespace JOOservices\LaravelController\Traits;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Str;
+use JOOservices\LaravelController\Contracts\ResponseFormatter;
 use Symfony\Component\HttpFoundation\Response;
+use UnexpectedValueException;
 
 trait HasApiResponses
 {
+    private const MESSAGE_NOT_FOUND = 'Not Found';
+
+    private const MESSAGE_UNPROCESSABLE = 'Unprocessable Entity';
+
+    private const MESSAGE_TOO_MANY_REQUESTS = 'Too Many Requests';
+
     /**
      * Return a success response.
      *
@@ -118,9 +127,11 @@ trait HasApiResponses
     /**
      * Return a not found response (404).
      */
-    public function notFound(string $message = 'Not Found'): JsonResponse
+    public function notFound(string $message = self::MESSAGE_NOT_FOUND): JsonResponse
     {
-        $msg = $message === 'Not Found' ? $this->trans('Not Found', 'not_found') : $message;
+        $msg = $message === self::MESSAGE_NOT_FOUND
+            ? $this->trans(self::MESSAGE_NOT_FOUND, 'not_found')
+            : $message;
 
         return $this->error($msg, Response::HTTP_NOT_FOUND);
     }
@@ -128,15 +139,19 @@ trait HasApiResponses
     /**
      * Return an unprocessable entity response (422). Validation errors go in $errors.
      * For backward compatibility, the first argument may be an array of errors (message then defaults).
+     *
+     * @param  string|array<string, array<int, string>>  $messageOrErrors
      */
-    public function unprocessable(string|array $messageOrErrors = 'Unprocessable Entity', mixed $errors = null): JsonResponse
-    {
+    public function unprocessable(
+        string|array $messageOrErrors = self::MESSAGE_UNPROCESSABLE,
+        mixed $errors = null
+    ): JsonResponse {
         if (is_array($messageOrErrors)) {
             $errors = $messageOrErrors;
-            $messageOrErrors = 'Unprocessable Entity';
+            $messageOrErrors = self::MESSAGE_UNPROCESSABLE;
         }
-        $msg = $messageOrErrors === 'Unprocessable Entity'
-            ? $this->trans('Unprocessable Entity', 'unprocessable')
+        $msg = $messageOrErrors === self::MESSAGE_UNPROCESSABLE
+            ? $this->trans(self::MESSAGE_UNPROCESSABLE, 'unprocessable')
             : $messageOrErrors;
 
         return $this->error($msg, Response::HTTP_UNPROCESSABLE_ENTITY, $errors);
@@ -198,35 +213,103 @@ trait HasApiResponses
         }
 
         $successCodes = config('laravel-controller.success_codes');
-        $effectiveSuccess = ! $success
-            ? false
-            : (is_array($successCodes) ? in_array($code, $successCodes, true) : $success);
+        $effectiveSuccess = false;
 
-        $payload = [
-            config('laravel-controller.keys.success', 'success') => $effectiveSuccess,
-            config('laravel-controller.keys.code', 'code') => $code,
-            config('laravel-controller.keys.message', 'message') => $message,
-            config('laravel-controller.keys.data', 'data') => $data,
-            config('laravel-controller.keys.meta', 'meta') => (object) $meta,
-            config('laravel-controller.keys.errors', 'errors') => $errors,
-            config('laravel-controller.keys.trace_id', 'trace_id') => request()->header('X-Trace-ID')
-                ?? (string) Str::uuid(),
-        ];
-
-        if ($warnings !== []) {
-            $payload[config('laravel-controller.keys.warnings', 'warnings')] = $warnings;
+        if ($success) {
+            $effectiveSuccess = is_array($successCodes)
+                ? in_array($code, $successCodes, true)
+                : true;
         }
 
+        $traceIdHeader = request()->header('X-Trace-ID');
+        $traceId = is_string($traceIdHeader) && $traceIdHeader !== ''
+            ? $traceIdHeader
+            : (string) Str::uuid();
+
+        /** @var array<string, string> $keys */
+        $keys = array_filter(
+            (array) config('laravel-controller.keys', []),
+            static fn (mixed $value, mixed $key): bool => is_string($key) && is_string($value),
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        $payload = $this->resolveResponsePayload([
+            'success' => $effectiveSuccess,
+            'code' => $code,
+            'message' => $message,
+            'data' => $data,
+            'errors' => $errors,
+            'meta' => $meta,
+            'warnings' => $warnings,
+            'trace_id' => $traceId,
+            'keys' => $keys,
+        ]);
+
         return response()->json($payload, $code);
+    }
+
+    /**
+     * Resolve the final JSON payload.
+     *
+     * @param  array{
+     *     success: bool,
+     *     code: int,
+     *     message: string,
+     *     data: mixed,
+     *     errors: mixed,
+     *     meta: array<string, mixed>,
+     *     warnings: array<int, string>|array<string, string>,
+     *     trace_id: string,
+     *     keys: array<string, string>
+     * }  $response
+     * @return array<string, mixed>
+     */
+    protected function resolveResponsePayload(array $response): array
+    {
+        $formatterClass = config('laravel-controller.response_formatter');
+
+        if (is_string($formatterClass) && $formatterClass !== '') {
+            $formatter = app($formatterClass);
+
+            if (! $formatter instanceof ResponseFormatter) {
+                throw new UnexpectedValueException(sprintf(
+                    'Configured response formatter [%s] must implement %s.',
+                    $formatterClass,
+                    ResponseFormatter::class
+                ));
+            }
+
+            return $formatter->format($response);
+        }
+
+        $payload = [
+            config('laravel-controller.keys.success', 'success') => $response['success'],
+            config('laravel-controller.keys.code', 'code') => $response['code'],
+            config('laravel-controller.keys.message', 'message') => $response['message'],
+            config('laravel-controller.keys.data', 'data') => $response['data'],
+            config('laravel-controller.keys.meta', 'meta') => (object) $response['meta'],
+            config('laravel-controller.keys.errors', 'errors') => $response['errors'],
+            config('laravel-controller.keys.trace_id', 'trace_id') => $response['trace_id'],
+        ];
+
+        if ($response['warnings'] !== []) {
+            $payload[config('laravel-controller.keys.warnings', 'warnings')] = $response['warnings'];
+        }
+
+        return $payload;
     }
 
     /**
      * Return a too many requests response (429).
      * Use respondTooManyRequestsFromRequest() to derive retry_after from Laravel's rate limiter.
      */
-    public function tooManyRequests(string $message = 'Too Many Requests', int $retryAfter = 60): JsonResponse
-    {
-        $msg = $message === 'Too Many Requests' ? $this->trans('Too Many Requests', 'too_many_requests') : $message;
+    public function tooManyRequests(
+        string $message = self::MESSAGE_TOO_MANY_REQUESTS,
+        int $retryAfter = 60
+    ): JsonResponse {
+        $msg = $message === self::MESSAGE_TOO_MANY_REQUESTS
+            ? $this->trans(self::MESSAGE_TOO_MANY_REQUESTS, 'too_many_requests')
+            : $message;
 
         return $this->error($msg, Response::HTTP_TOO_MANY_REQUESTS, [
             'retry_after' => $retryAfter,
@@ -238,7 +321,7 @@ trait HasApiResponses
      * Falls back to $defaultRetryAfter seconds when header is missing.
      */
     public function respondTooManyRequestsFromRequest(
-        string $message = 'Too Many Requests',
+        string $message = self::MESSAGE_TOO_MANY_REQUESTS,
         int $defaultRetryAfter = 60
     ): JsonResponse {
         $retryAfter = (int) request()->header('Retry-After', (string) $defaultRetryAfter);
@@ -249,11 +332,11 @@ trait HasApiResponses
     /**
      * Return a paginated response. Use with LengthAwarePaginator; optionally pass a resource class to transform items.
      *
-     * @param  class-string<\Illuminate\Http\Resources\Json\JsonResource>|null  $resourceClass
+     * @param  class-string<JsonResource>|null  $resourceClass
      */
     public function respondWithPagination(mixed $paginator, ?string $resourceClass = null): JsonResponse
     {
-        if ($paginator instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator) {
+        if ($paginator instanceof LengthAwarePaginator) {
             $items = $paginator->items();
 
             if ($resourceClass && class_exists($resourceClass)) {
@@ -290,7 +373,7 @@ trait HasApiResponses
      * @param  iterable<mixed>  $items
      * @param  string|int|null  $cursor  Current cursor (opaque token or id).
      * @param  string|int|null  $nextCursor  Cursor for next page, or null if no next page.
-     * @param  class-string<\Illuminate\Http\Resources\Json\JsonResource>|null  $resourceClass
+     * @param  class-string<JsonResource>|null  $resourceClass
      */
     public function respondWithCursorPagination(
         iterable $items,
@@ -317,7 +400,7 @@ trait HasApiResponses
      * Return an offset-paginated response (offset/limit style). Meta has offset, limit, total, has_more.
      *
      * @param  iterable<mixed>  $items
-     * @param  class-string<\Illuminate\Http\Resources\Json\JsonResource>|null  $resourceClass
+     * @param  class-string<JsonResource>|null  $resourceClass
      */
     public function respondWithOffsetPagination(
         iterable $items,
@@ -344,7 +427,7 @@ trait HasApiResponses
     /**
      * @deprecated Use respondWithPagination() instead. Will be removed in the next major version.
      *
-     * @param  class-string<\Illuminate\Http\Resources\Json\JsonResource>|null  $resourceClass
+     * @param  class-string<JsonResource>|null  $resourceClass
      */
     public function paginated(mixed $paginator, ?string $resourceClass = null): JsonResponse
     {
@@ -355,7 +438,7 @@ trait HasApiResponses
      * Convenience helper for returning a single item via an API Resource class.
      * When item_links config is true, pass $links or use item_links_default.
      *
-     * @param  class-string<\Illuminate\Http\Resources\Json\JsonResource>  $resourceClass
+     * @param  class-string<JsonResource>  $resourceClass
      * @param  array<string, string>|null  $links  HAL-style links (e.g. self, index).
      */
     public function respondWithItem(mixed $item, string $resourceClass, ?array $links = null): JsonResponse
@@ -385,7 +468,7 @@ trait HasApiResponses
      * Convenience helper for returning a collection via an API Resource class.
      *
      * @param  iterable<mixed>  $items
-     * @param  class-string<\Illuminate\Http\Resources\Json\JsonResource>  $resourceClass
+     * @param  class-string<JsonResource>  $resourceClass
      */
     public function respondWithCollection(iterable $items, string $resourceClass): JsonResponse
     {

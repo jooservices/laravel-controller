@@ -28,6 +28,8 @@ This pack helps agents and teammates:
 2. Load the relevant skills from `.github/skills/`.
 3. Implement or review the requested change.
 4. Re-check docs, tests, CI assumptions, and release impact before finishing.
+5. Keep examples on FormRequest + service/repository architecture.
+6. Keep Laravel Resources as presentation transformers; response envelopes only wrap output.
 
 ## Common task recipes
 
@@ -52,6 +54,13 @@ Use:
 
 - `ci-and-release`
 - `repo-quality-foundation`
+
+### Controller or response examples
+
+Use:
+
+- `architecture-and-design-principles`
+- `docs-and-readme-sync`
 
 ### Mixed package and docs work
 

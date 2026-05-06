@@ -1,6 +1,6 @@
 # Configuration Recipes
 
-## Custom response keys
+## Custom Response Keys
 
 ```php
 'keys' => [
@@ -9,17 +9,21 @@
 ],
 ```
 
-## 204 envelope support
+## Custom Trace Header
+
+```php
+'trace_id' => [
+    'header' => 'X-Request-ID',
+],
+```
+
+## 204 Envelope Support
 
 ```php
 'envelope_204' => true,
 ```
 
-## Custom response formatter
-
-```php
-'response_formatter' => App\Support\ApiResponseFormatter::class,
-```
+## Custom Response Formatter
 
 ```php
 <?php
@@ -28,7 +32,7 @@ namespace App\Support;
 
 use JOOservices\LaravelController\Contracts\ResponseFormatter;
 
-class ApiResponseFormatter implements ResponseFormatter
+final class ApiResponseFormatter implements ResponseFormatter
 {
     public function format(array $response): array
     {
@@ -43,19 +47,15 @@ class ApiResponseFormatter implements ResponseFormatter
 }
 ```
 
-## First validation error as top-level message
+## DTO Or Data Object Input
+
+DTOs may be passed as response data when they are `Arrayable`, `JsonSerializable`, or expose `toArray()`.
 
 ```php
-'validation' => [
-    'message' => 'first',
-],
+return $this->respondWithData(
+    data: $summary,
+    message: 'Summary generated successfully.',
+);
 ```
 
-## Default item links
-
-```php
-'item_links' => true,
-'item_links_default' => [
-    'index' => '/api/v1/resources',
-],
-```
+This does not replace Laravel Resources for presentation.

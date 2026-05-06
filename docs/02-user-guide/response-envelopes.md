@@ -16,24 +16,21 @@ Default envelope shape:
 }
 ```
 
-Available canonical helpers:
+`warnings` is included only when warnings are present.
 
-| Method | HTTP | Purpose |
-|--------|------|---------|
-| `success()` | 200 | Generic success response |
-| `created()` | 201 | Resource created |
-| `accepted()` | 202 | Accepted or async work |
-| `noContent()` | 204 | Empty success response |
-| `badRequest()` | 400 | Invalid request shape |
-| `unauthorized()` | 401 | Authentication required |
-| `forbidden()` | 403 | Access denied |
-| `notFound()` | 404 | Missing resource |
-| `conflict()` | 409 | State conflict |
-| `gone()` | 410 | Removed or deprecated resource |
-| `unprocessable()` | 422 | Validation failure |
-| `tooManyRequests()` | 429 | Rate-limited request |
-| `internalError()` | 500 | Unexpected server error |
+## Resource-Friendly Helpers
 
-`warnings` may be included on success responses for partial success or deprecation messaging.
+- `respondWithData()`
+- `respondWithResource()`
+- `respondWithResourceCollection()`
+- `respondWithPagination()`
+- `respondWithError()`
+- `respondNoContent()`
 
-If you need a different top-level contract entirely, configure `response_formatter` with a class that implements `JOOservices\LaravelController\Contracts\ResponseFormatter`. That formatter receives the normalized response context and returns the final payload array.
+Backward-compatible helpers such as `success()`, `error()`, `respondWithItem()`, `respondWithCollection()`, and `paginated()` remain available.
+
+## Resource Boundary
+
+Use Laravel Resources for presentation. The package envelope wraps Resource output; it does not replace Resource classes.
+
+DTOs, `Arrayable`, `JsonSerializable`, and objects with `toArray()` are normalized as accepted response input data only.

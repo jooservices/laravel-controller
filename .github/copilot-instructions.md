@@ -8,4 +8,6 @@ When generating or editing code:
 - match repository-native style and naming, not just formatter output
 - keep tests and docs in the same change when public behavior moves
 - prefer the structured `docs/` tree for documentation additions
-- assume local and CI checks will enforce linting, static analysis, and tests
+- keep examples on FormRequest + service/repository architecture, not direct model queries
+- keep Laravel Resources as presentation transformers; response envelopes only wrap output
+- assume local and CI checks will enforce Pint, PHPCS, PHPStan, PHPMD, PHP-CS-Fixer, coverage, and tests

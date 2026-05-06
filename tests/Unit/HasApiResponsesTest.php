@@ -5,8 +5,10 @@ namespace Tests\Unit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use JOOservices\LaravelController\Traits\HasApiResponses;
+use JsonSerializable;
 use Tests\TestCase;
 
 class HasApiResponsesTest extends TestCase
@@ -99,6 +101,53 @@ class HasApiResponsesTest extends TestCase
         $this->assertEquals(['id' => 1, 'name' => 'Test'], $data['data']);
     }
 
+    public function testRespondWithDataAliasNormalizesArrayableAndJsonSerializable()
+    {
+        $serializable = new class() implements JsonSerializable
+        {
+            public function jsonSerialize(): mixed
+            {
+                return ['state' => 'ready'];
+            }
+        };
+
+        $response = $this->traitObject->respondWithData([
+            'collection' => new Collection(['one', 'two']),
+            'serializable' => $serializable,
+        ]);
+
+        $data = $response->getData(true);
+
+        $this->assertSame(['one', 'two'], $data['data']['collection']);
+        $this->assertSame(['state' => 'ready'], $data['data']['serializable']);
+    }
+
+    public function testRespondWithErrorAlias()
+    {
+        $response = $this->traitObject->respondWithError('Invalid input', 400, ['field' => ['Invalid']]);
+
+        $this->assertSame(400, $response->getStatusCode());
+        $this->assertFalse($response->getData(true)['success']);
+        $this->assertSame(['field' => ['Invalid']], $response->getData(true)['errors']);
+    }
+
+    public function testRespondNoContentAlias()
+    {
+        $response = $this->traitObject->respondNoContent();
+
+        $this->assertSame(204, $response->getStatusCode());
+    }
+
+    public function testRespondWithResourceAlias()
+    {
+        $resource = new JsonResource(['id' => 10]);
+
+        $response = $this->traitObject->respondWithResource($resource, 'User retrieved');
+
+        $this->assertSame('User retrieved', $response->getData(true)['message']);
+        $this->assertSame(['id' => 10], $response->getData(true)['data']);
+    }
+
     public function testResourceCollectionResponseHandling()
     {
         // Mock a resource collection
@@ -117,6 +166,16 @@ class HasApiResponsesTest extends TestCase
 
         $response = $this->traitObject->success();
         $this->assertEquals($uuid, $response->getData(true)['trace_id']);
+    }
+
+    public function testConfiguredTraceIdHeader()
+    {
+        config(['laravel-controller.trace_id.header' => 'X-Request-ID']);
+        request()->headers->set('X-Request-ID', 'request-123');
+
+        $response = $this->traitObject->success();
+
+        $this->assertSame('request-123', $response->getData(true)['trace_id']);
     }
 
     public function testSuccessWithWarnings()
@@ -196,6 +255,20 @@ class HasApiResponsesTest extends TestCase
         $this->assertArrayHasKey('last', $data['meta']['links']);
         $this->assertArrayHasKey('prev', $data['meta']['links']);
         $this->assertArrayHasKey('next', $data['meta']['links']);
+    }
+
+    public function testRespondWithPaginationAcceptsMessageAndCode()
+    {
+        $paginator = new LengthAwarePaginator([['id' => 1]], 1, 1, 1);
+
+        $response = $this->traitObject->respondWithPagination(
+            paginator: $paginator,
+            message: 'Users retrieved successfully.',
+            code: 202,
+        );
+
+        $this->assertSame(202, $response->getStatusCode());
+        $this->assertSame('Users retrieved successfully.', $response->getData(true)['message']);
     }
 
     public function testSuccessResponseDoesNotIncludeWarningsWhenEmpty()

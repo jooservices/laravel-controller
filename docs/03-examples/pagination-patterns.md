@@ -1,31 +1,36 @@
 # Pagination Patterns
 
-Cursor-based pagination:
+Use services to fetch paginated data, then pass the paginator and Resource class to the controller helper.
 
 ```php
-$items = User::where('id', '>', $cursor)->orderBy('id')->limit(20)->get();
-$nextCursor = $items->isNotEmpty() ? $items->last()->id : null;
+public function index(UserIndexRequest $request, UserService $users): JsonResponse
+{
+    return $this->respondWithPagination(
+        paginator: $users->paginate($request->validated()),
+        resourceClass: UserResource::class,
+        message: 'Users retrieved successfully.',
+    );
+}
+```
 
+Cursor-style and offset-style helpers are available for services that do not return Laravel length-aware paginators:
+
+```php
 return $this->respondWithCursorPagination(
-    $items,
-    $cursor,
-    $nextCursor,
-    $items->count() === 20,
-    UserResource::class,
+    items: $users->cursorPage($request->validated()),
+    cursor: $request->validated('cursor'),
+    nextCursor: $users->nextCursor(),
+    hasMore: $users->hasMore(),
+    resourceClass: UserResource::class,
 );
 ```
 
-Offset-based pagination:
-
 ```php
-$offset = (int) $request->get('offset', 0);
-$limit = min(50, (int) $request->get('limit', 20));
-$items = User::offset($offset)->limit($limit + 1)->get();
-$hasMore = $items->count() > $limit;
-
-if ($hasMore) {
-    $items = $items->take($limit);
-}
-
-return $this->respondWithOffsetPagination($items, $offset, $limit, User::count(), UserResource::class);
+return $this->respondWithOffsetPagination(
+    items: $users->offsetPage($request->validated()),
+    offset: $request->integer('offset'),
+    limit: $request->integer('limit'),
+    total: $users->countFor($request->validated()),
+    resourceClass: UserResource::class,
+);
 ```

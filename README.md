@@ -7,118 +7,249 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Packagist Version](https://img.shields.io/packagist/v/jooservices/laravel-controller)](https://packagist.org/packages/jooservices/laravel-controller)
 
-The **JOOservices Laravel Controller** package provides a standardized base controller for Laravel APIs with consistent envelopes, pagination helpers, status endpoints, and exception-to-response mapping.
+**JOOservices Laravel Controller** is a Laravel API controller foundation for standardized JSON response envelopes, resource-friendly helpers, pagination metadata, status endpoints, trace IDs, and formatter-based response customization.
 
-Package name: `jooservices/laravel-controller`
+Composer package: `jooservices/laravel-controller`
 
-## Install
+## Features
+
+- base API controller helpers for success, error, validation, status, and no-content responses
+- Laravel `JsonResource` and `ResourceCollection` friendly response helpers
+- standardized response envelope with configurable keys
+- length-aware, cursor, and offset pagination helpers
+- trace ID support through a configurable request header
+- optional status endpoint with version, environment, maintenance, and health-check metadata
+- custom `ResponseFormatter` contract for teams that need a different top-level JSON shape
+- optional exception response helper for common Laravel exceptions
+- read-only `php artisan laravel-controller:doctor` diagnostics
+
+## Installation
 
 ```bash
 composer require jooservices/laravel-controller
 ```
 
-## Quick example
+## Publish Config
+
+```bash
+php artisan vendor:publish --provider="JOOservices\LaravelController\Providers\LaravelControllerServiceProvider" --tag="config"
+```
+
+Optional translations:
+
+```bash
+php artisan vendor:publish --provider="JOOservices\LaravelController\Providers\LaravelControllerServiceProvider" --tag="laravel-controller-lang"
+```
+
+## Quick Start
+
+Use the package at the controller boundary. Keep request validation, business logic, and persistence in your application layers:
 
 ```php
+<?php
+
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\UserIndexRequest;
 use App\Http\Resources\UserResource;
-use App\Models\User;
+use App\Services\UserService;
+use Illuminate\Http\JsonResponse;
 use JOOservices\LaravelController\Http\Controllers\BaseApiController;
 
-class UserController extends BaseApiController
+final class UserController extends BaseApiController
 {
-    public function index()
+    public function index(UserIndexRequest $request, UserService $users): JsonResponse
     {
-        return $this->respondWithPagination(User::paginate(), UserResource::class);
-    }
-
-    public function show(User $user)
-    {
-        return $this->respondWithItem($user, UserResource::class);
+        return $this->respondWithPagination(
+            paginator: $users->paginate($request->validated()),
+            resourceClass: UserResource::class,
+            message: 'Users retrieved successfully.',
+        );
     }
 }
 ```
 
-## What the package supports today
+## Standard Architecture Usage
 
-- standardized JSON response envelopes for success and error states
-- optional custom response formatter support for teams that need a different top-level contract
-- item, collection, length-aware pagination, cursor pagination, and offset pagination helpers
-- request trace correlation through `X-Trace-ID`
-- optional HAL-style pagination and item links
-- configurable `204` envelope behavior, validation message strategy, and success-code range
-- optional status endpoint with environment, maintenance, version, and health-check metadata
-- exception handling helpers designed for Laravel API controllers
+Recommended flow:
+
+```text
+Request -> Controller -> FormRequest -> Service -> Repository -> Model
+Model / entity / data object -> Laravel Resource -> API response envelope -> JsonResponse
+```
+
+Laravel Resource remains the presentation transformer. JOOservices Laravel Controller wraps the transformed payload in the API response envelope.
+
+## Response Envelope Example
+
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Users retrieved successfully.",
+  "data": [],
+  "meta": {},
+  "errors": null,
+  "trace_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+## Resource Example
+
+```php
+public function show(UserShowRequest $request, UserService $users): JsonResponse
+{
+    return $this->respondWithResource(
+        resource: new UserResource($users->findForDisplay($request->validated('id'))),
+        message: 'User retrieved successfully.',
+    );
+}
+```
+
+DTOs, `Arrayable`, `JsonSerializable`, and objects with `toArray()` may be accepted as input data, but they do not replace Laravel Resources as the presentation layer.
+
+## Pagination Example
+
+```php
+public function index(UserIndexRequest $request, UserService $users): JsonResponse
+{
+    return $this->respondWithPagination(
+        paginator: $users->paginate($request->validated()),
+        resourceClass: UserResource::class,
+        message: 'Users retrieved successfully.',
+    );
+}
+```
+
+## Error Response Example
+
+```php
+public function archive(UserArchiveRequest $request, UserService $users): JsonResponse
+{
+    if (! $users->canArchive($request->validated('id'))) {
+        return $this->respondWithError(
+            message: 'User cannot be archived.',
+            code: 409,
+            errors: ['user' => ['The user has active dependencies.']],
+        );
+    }
+
+    $users->archive($request->validated('id'));
+
+    return $this->respondNoContent();
+}
+```
+
+## Status Endpoint
+
+When package routes are enabled, the status endpoint is available under the configured prefix:
+
+```bash
+GET /api/v1/status
+```
+
+Run diagnostics from the CLI:
+
+```bash
+php artisan laravel-controller:doctor
+php artisan laravel-controller:doctor --json
+```
+
+## Custom Formatter
+
+```php
+<?php
+
+namespace App\Support;
+
+use JOOservices\LaravelController\Contracts\ResponseFormatter;
+
+final class ApiResponseFormatter implements ResponseFormatter
+{
+    public function format(array $response): array
+    {
+        return [
+            'ok' => $response['success'],
+            'status' => $response['code'],
+            'message' => $response['message'],
+            'payload' => $response['data'],
+            'error' => $response['errors'],
+            'request_id' => $response['trace_id'],
+        ];
+    }
+}
+```
+
+## Configuration
+
+Important config keys:
+
+- `response_formatter`
+- `keys`
+- `trace_id.header`
+- `use_translations`
+- `envelope_204`
+- `success_codes`
+- `validation.message`
+- `routes.enabled`
+- `routes.prefix`
+- `status`
+- `pagination_links`
+- `item_links`
+
+## Current Limitations And Non-Goals
+
+This package is:
+
+- base API controller helpers
+- standard response envelope helpers
+- pagination and status response helpers
+- formatter contract
+- optional exception response helper
+
+This package is not:
+
+- CRUD generator
+- service layer replacement
+- repository replacement
+- validation package
+- full application exception-handler framework
+- JSON:API full implementation
+- business logic layer
 
 ## Documentation
 
-Start with:
-
 - [Documentation Hub](docs/README.md)
-- [Installation](docs/01-getting-started/installation.md)
-- [Quick Start](docs/01-getting-started/quick-start.md)
-- [Response Envelopes](docs/02-user-guide/response-envelopes.md)
-- [Pagination and Status](docs/02-user-guide/pagination-and-status.md)
-- [Response Reference](docs/02-user-guide/response-reference.md)
+- [Architecture](docs/00-architecture/01-project-overview.md)
+- [Getting Started](docs/01-getting-started/quick-start.md)
+- [User Guide](docs/02-user-guide/response-envelopes.md)
+- [Examples](docs/03-examples/basic-controller.md)
+- [Development](docs/04-development/setup.md)
+- [Maintenance](docs/05-maintenance/01-risks-legacy-and-gaps.md)
 
-## AI Support
-
-This repository now includes a lightweight AI skill pack aligned with the `jooservices/dto` repository structure.
-
-Start with:
+## AI Contributor Support
 
 - [AGENTS.md](AGENTS.md)
 - [CLAUDE.md](CLAUDE.md)
 - [AI Skills Map](ai/skills/README.md)
 - [AI Skills Usage Guide](ai/skills/USAGE.md)
 
-The canonical repository skills live under `.github/skills/`, with adapter files for GitHub Copilot and other agent runtimes.
-
-## Development
+## Development Commands
 
 ```bash
+composer lint
 composer lint:all
+composer lint:fix
 composer test
+composer test:coverage
+composer check
+composer ci
 ```
 
-Contributor workflow details live in:
+## Security And Contributing
 
-- [Setup](docs/04-development/setup.md)
-- [Coding Standards](docs/04-development/coding-standards.md)
-- [Testing](docs/04-development/testing.md)
-- [CI/CD](docs/04-development/ci-cd.md)
-- [AI Skills](docs/04-development/ai-skills.md)
-
-## GitHub Actions and Services
-
-Composer command parity with `jooservices/dto`:
-
-- core command map matches: `test`, `test:coverage`, `lint:pint`, `lint:pint:fix`, `lint:phpcs`, `lint:phpstan`, `lint:phpmd`, `lint`, `lint:all`, `lint:fix`, `check`, and `ci`
-- intentional differences remain: this package does not include `lint:cs` or `lint:cs:fix` because `php-cs-fixer` is not part of this repository toolchain
-
-Local git hook consistency:
-
-- `captainhook` is installed through Composer hooks
-- `commit-msg`, `pre-commit`, and `pre-push` checks are defined in `captainhook.json`
-- `gitleaks` is part of the local hook policy, matching the `dto` repository conventions
-
-Current GitHub Actions coverage:
-
-- `CI`: Composer audit, lint matrix, tests, coverage artifacts, optional Codecov upload
-- `Release`: tag-driven GitHub release with optional Packagist refresh
-- `PR Labeler`: applies labels from changed-file rules in `.github/labeler.yml`
-- `Semantic PR Title`: enforces conventional pull request titles
-- `OpenSSF Scorecard`: publishes repository security posture results as SARIF
-- `Secret Scanning`: workflow exists, but the `gitleaks` job is disabled until `GITLEAKS_LICENSE` is configured
-
-External services currently supported by workflows:
-
-- `Codecov` in `.github/workflows/ci.yml` when `CODECOV_TOKEN` is configured
-- `Packagist` refresh in `.github/workflows/release.yml` when `PACKAGIST_USERNAME` and `PACKAGIST_TOKEN` are configured
-- `OpenSSF Scorecard` in `.github/workflows/scorecard.yml`
-- `GitHub SARIF` upload in `.github/workflows/scorecard.yml`
+Use GitHub issues for bug reports and security coordination unless a dedicated security policy is added.
 
 ## License
 
-This package is distributed under the MIT license.
+JOOservices Laravel Controller is open-sourced software licensed under the MIT license.

@@ -1,12 +1,38 @@
 # Project Overview
 
-The **JOOservices Laravel Controller** package standardizes how Laravel APIs return JSON responses and expose package-level health endpoints.
+**JOOservices Laravel Controller** standardizes the controller boundary for Laravel APIs.
 
-The package exists to solve four recurring concerns consistently:
+It owns the response envelope layer:
 
-- response envelope shape
-- pagination metadata and links
-- trace correlation and error formatting
-- package-provided status routes and versioned route mapping
+```text
+Model / entity / domain DTO
+    -> Laravel Resource / ResourceCollection
+    -> API response envelope
+    -> JsonResponse
+```
 
-At a high level, host applications extend `BaseApiController`, while the package centralizes formatting and exception behavior inside traits.
+Laravel Resources remain the official presentation transformer for payload data. This package wraps transformed payloads, pagination metadata, warnings, errors, and trace IDs into a consistent API response contract.
+
+## Package Scope
+
+This package is:
+
+- base API controller helpers
+- standard response envelope helpers
+- pagination and status response helpers
+- formatter contract
+- optional exception response helper
+
+This package is not:
+
+- CRUD generator
+- service layer replacement
+- repository replacement
+- validation package
+- full application exception-handler framework
+- JSON:API full implementation
+- business logic layer
+
+## JOOservices Ecosystem Fit
+
+The package aligns with `jooservices/dto` by accepting structured data inputs where Laravel can serialize them, but it does not replace Laravel Resources. DTOs and data objects are useful application-layer inputs; Resources remain the API presentation layer.

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [develop]
   pull_request:
-    branches: [main, master, develop]
+    branches: [develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -53,6 +53,8 @@ jobs:
             command: lint:phpstan
           - name: PHPMD
             command: lint:phpmd
+          - name: PHP-CS-Fixer
+            command: lint:cs
     steps:
       - name: Checkout code
         uses: actions/checkout@v6.0.2

@@ -3,12 +3,14 @@
 namespace JOOservices\LaravelController\Traits;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
-use Illuminate\Support\Str;
 use JOOservices\LaravelController\Contracts\ResponseFormatter;
+use JsonSerializable;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\UuidV4;
 use UnexpectedValueException;
 
 trait HasApiResponses
@@ -44,6 +46,41 @@ trait HasApiResponses
     }
 
     /**
+     * Laravel-friendly alias for returning normalized payload data.
+     *
+     * @param  array<string, mixed>  $meta
+     * @param  array<int, string>|array<string, string>  $warnings
+     */
+    public function respondWithData(
+        mixed $data = null,
+        string $message = 'Success',
+        int $code = Response::HTTP_OK,
+        array $meta = [],
+        array $warnings = []
+    ): JsonResponse {
+        return $this->success($data, $message, $code, $meta, $warnings);
+    }
+
+    /**
+     * Laravel-friendly alias for returning an API error envelope.
+     */
+    public function respondWithError(
+        string $message,
+        int $code = Response::HTTP_BAD_REQUEST,
+        mixed $errors = null
+    ): JsonResponse {
+        return $this->error($message, $code, $errors);
+    }
+
+    /**
+     * Laravel-friendly alias for a 204 response.
+     */
+    public function respondNoContent(): JsonResponse
+    {
+        return $this->noContent();
+    }
+
+    /**
      * Return a created response (201).
      */
     public function created(mixed $data = null, string $message = 'Created'): JsonResponse
@@ -57,7 +94,7 @@ trait HasApiResponses
      */
     public function noContent(): JsonResponse
     {
-        if (config('laravel-controller.envelope_204', false)) {
+        if (config('laravel-controller.envelope_204', false) === true) {
             return $this->formatResponse(
                 true,
                 Response::HTTP_NO_CONTENT,
@@ -176,7 +213,7 @@ trait HasApiResponses
      */
     protected function trans(string $default, string $key = 'message'): string
     {
-        if (! config('laravel-controller.use_translations', false)) {
+        if (config('laravel-controller.use_translations', false) !== true) {
             return $default;
         }
 
@@ -192,7 +229,7 @@ trait HasApiResponses
      * @param  array<string, mixed>  $meta
      * @param  array<int, string>|array<string, string>  $warnings
      *
-     * @SuppressWarnings(PHPMD.StaticAccess)
+     * @SuppressWarnings("PHPMD.StaticAccess")
      */
     protected function formatResponse(
         bool $success,
@@ -203,6 +240,32 @@ trait HasApiResponses
         array $meta = [],
         array $warnings = []
     ): JsonResponse {
+        [$data, $meta] = $this->resolveResourcePayload($data, $meta);
+        $data = $this->normalizeResponseValue($data);
+        $errors = $this->normalizeResponseValue($errors);
+        $meta = $this->normalizeStringKeyedArray($meta);
+
+        $payload = $this->resolveResponsePayload([
+            'success' => $this->isEffectiveSuccess($success, $code),
+            'code' => $code,
+            'message' => $message,
+            'data' => $data,
+            'errors' => $errors,
+            'meta' => $meta,
+            'warnings' => $this->normalizeWarnings($warnings),
+            'trace_id' => $this->resolveTraceId(),
+            'keys' => $this->configuredResponseKeys(),
+        ]);
+
+        return response()->json($payload, $code);
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array{0: mixed, 1: array<string, mixed>}
+     */
+    protected function resolveResourcePayload(mixed $data, array $meta): array
+    {
         if ($data instanceof ResourceCollection) {
             /** @var array<string, mixed> $response */
             $response = $data->response()->getData(true);
@@ -212,40 +275,46 @@ trait HasApiResponses
             $data = $data->resolve();
         }
 
-        $successCodes = config('laravel-controller.success_codes');
-        $effectiveSuccess = false;
+        return [$data, $this->normalizeStringKeyedArray($meta)];
+    }
 
-        if ($success) {
-            $effectiveSuccess = is_array($successCodes)
-                ? in_array($code, $successCodes, true)
-                : true;
+    protected function isEffectiveSuccess(bool $success, int $code): bool
+    {
+        $successCodes = config('laravel-controller.success_codes');
+
+        if (! $success) {
+            return false;
         }
 
-        $traceIdHeader = request()->header('X-Trace-ID');
-        $traceId = is_string($traceIdHeader) && $traceIdHeader !== ''
-            ? $traceIdHeader
-            : (string) Str::uuid();
+        return is_array($successCodes) ? in_array($code, $successCodes, true) : true;
+    }
 
-        /** @var array<string, string> $keys */
-        $keys = array_filter(
+    protected function resolveTraceId(): string
+    {
+        $traceHeader = config('laravel-controller.trace_id.header', 'X-Trace-ID');
+        $headerName = 'X-Trace-ID';
+
+        if (is_string($traceHeader) && trim($traceHeader) !== '') {
+            $headerName = $traceHeader;
+        }
+
+        $traceIdHeader = request()->header($headerName);
+
+        return is_string($traceIdHeader) && $traceIdHeader !== ''
+            ? $traceIdHeader
+            : (string) new UuidV4();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function configuredResponseKeys(): array
+    {
+        return array_filter(
             (array) config('laravel-controller.keys', []),
             static fn (mixed $value, mixed $key): bool => is_string($key) && is_string($value),
             ARRAY_FILTER_USE_BOTH
         );
-
-        $payload = $this->resolveResponsePayload([
-            'success' => $effectiveSuccess,
-            'code' => $code,
-            'message' => $message,
-            'data' => $data,
-            'errors' => $errors,
-            'meta' => $meta,
-            'warnings' => $warnings,
-            'trace_id' => $traceId,
-            'keys' => $keys,
-        ]);
-
-        return response()->json($payload, $code);
     }
 
     /**
@@ -283,20 +352,87 @@ trait HasApiResponses
         }
 
         $payload = [
-            config('laravel-controller.keys.success', 'success') => $response['success'],
-            config('laravel-controller.keys.code', 'code') => $response['code'],
-            config('laravel-controller.keys.message', 'message') => $response['message'],
-            config('laravel-controller.keys.data', 'data') => $response['data'],
-            config('laravel-controller.keys.meta', 'meta') => (object) $response['meta'],
-            config('laravel-controller.keys.errors', 'errors') => $response['errors'],
-            config('laravel-controller.keys.trace_id', 'trace_id') => $response['trace_id'],
+            $this->responseKey('success') => $response['success'],
+            $this->responseKey('code') => $response['code'],
+            $this->responseKey('message') => $response['message'],
+            $this->responseKey('data') => $response['data'],
+            $this->responseKey('meta') => (object) $response['meta'],
+            $this->responseKey('errors') => $response['errors'],
+            $this->responseKey('trace_id') => $response['trace_id'],
         ];
 
         if ($response['warnings'] !== []) {
-            $payload[config('laravel-controller.keys.warnings', 'warnings')] = $response['warnings'];
+            $payload[$this->responseKey('warnings')] = $response['warnings'];
         }
 
         return $payload;
+    }
+
+    protected function responseKey(string $key): string
+    {
+        $value = config("laravel-controller.keys.{$key}", $key);
+
+        return is_string($value) && $value !== '' ? $value : $key;
+    }
+
+    protected function normalizeResponseValue(mixed $value): mixed
+    {
+        if ($value instanceof JsonResource) {
+            return $this->normalizeResponseValue($value->resolve());
+        }
+
+        if ($value instanceof Arrayable) {
+            return $this->normalizeResponseValue($value->toArray());
+        }
+
+        if ($value instanceof JsonSerializable) {
+            return $this->normalizeResponseValue($value->jsonSerialize());
+        }
+
+        if (is_object($value) && method_exists($value, 'toArray')) {
+            /** @var mixed $arrayValue */
+            $arrayValue = $value->toArray();
+
+            return $this->normalizeResponseValue($arrayValue);
+        }
+
+        if (is_array($value)) {
+            return array_map(fn (mixed $item): mixed => $this->normalizeResponseValue($item), $value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<mixed>  $items
+     * @return array<string, mixed>
+     */
+    protected function normalizeStringKeyedArray(array $items): array
+    {
+        $normalized = [];
+
+        foreach ($items as $key => $value) {
+            $normalized[(string) $key] = $this->normalizeResponseValue($value);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<int, string>|array<string, string>  $warnings
+     * @return array<int, string>|array<string, string>
+     */
+    protected function normalizeWarnings(array $warnings): array
+    {
+        $normalized = [];
+
+        foreach ($warnings as $key => $value) {
+            if ($value !== '') {
+                $normalized[$key] = $value;
+            }
+        }
+
+        return $normalized;
     }
 
     /**
@@ -334,12 +470,16 @@ trait HasApiResponses
      *
      * @param  class-string<JsonResource>|null  $resourceClass
      */
-    public function respondWithPagination(mixed $paginator, ?string $resourceClass = null): JsonResponse
-    {
+    public function respondWithPagination(
+        mixed $paginator,
+        ?string $resourceClass = null,
+        string $message = 'Success',
+        int $code = Response::HTTP_OK
+    ): JsonResponse {
         if ($paginator instanceof LengthAwarePaginator) {
             $items = $paginator->items();
 
-            if ($resourceClass && class_exists($resourceClass)) {
+            if ($resourceClass !== null && class_exists($resourceClass)) {
                 $items = $resourceClass::collection($items);
             }
 
@@ -352,7 +492,7 @@ trait HasApiResponses
                 ],
             ];
 
-            if (config('laravel-controller.pagination_links', true)) {
+            if (config('laravel-controller.pagination_links', true) === true) {
                 $meta['links'] = [
                     'first' => $paginator->url(1),
                     'last' => $paginator->url($paginator->lastPage()),
@@ -361,10 +501,10 @@ trait HasApiResponses
                 ];
             }
 
-            return $this->success($items, 'Success', Response::HTTP_OK, $meta);
+            return $this->success($items, $message, $code, $meta);
         }
 
-        return $this->success($paginator);
+        return $this->success($paginator, $message, $code);
     }
 
     /**
@@ -383,7 +523,7 @@ trait HasApiResponses
         ?string $resourceClass = null
     ): JsonResponse {
         $items = is_array($items) ? $items : iterator_to_array($items);
-        if ($resourceClass && class_exists($resourceClass)) {
+        if ($resourceClass !== null && class_exists($resourceClass)) {
             $items = $resourceClass::collection($items)->resolve();
         }
 
@@ -410,7 +550,7 @@ trait HasApiResponses
         ?string $resourceClass = null
     ): JsonResponse {
         $items = is_array($items) ? $items : iterator_to_array($items);
-        if ($resourceClass && class_exists($resourceClass)) {
+        if ($resourceClass !== null && class_exists($resourceClass)) {
             $items = $resourceClass::collection($items)->resolve();
         }
 
@@ -451,7 +591,7 @@ trait HasApiResponses
         $data = $resource->resolve();
         $meta = [];
 
-        if (config('laravel-controller.item_links', true)) {
+        if (config('laravel-controller.item_links', true) === true) {
             $merged = array_merge(
                 (array) config('laravel-controller.item_links_default', []),
                 (array) $links
@@ -462,6 +602,22 @@ trait HasApiResponses
         }
 
         return $this->success($data, 'Success', Response::HTTP_OK, $meta);
+    }
+
+    public function respondWithResource(
+        JsonResource $resource,
+        string $message = 'Success',
+        int $code = Response::HTTP_OK
+    ): JsonResponse {
+        return $this->success($resource, $message, $code);
+    }
+
+    public function respondWithResourceCollection(
+        ResourceCollection $collection,
+        string $message = 'Success',
+        int $code = Response::HTTP_OK
+    ): JsonResponse {
+        return $this->success($collection, $message, $code);
     }
 
     /**

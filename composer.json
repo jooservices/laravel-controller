@@ -1,29 +1,53 @@
 {
     "name": "jooservices/laravel-controller",
-    "description": "Base API Controller with standardized responses and automatic versioning",
+    "description": "Laravel API controller foundation for standardized JSON responses, pagination, status endpoints, trace IDs, and custom formatters.",
     "type": "library",
-    "version": "1.2.0",
     "license": "MIT",
+    "keywords": [
+        "api",
+        "api-response",
+        "base-controller",
+        "controller",
+        "formatter",
+        "jooservices",
+        "json-response",
+        "laravel",
+        "laravel12",
+        "pagination",
+        "php",
+        "php85",
+        "response-envelope",
+        "status-endpoint",
+        "trace-id"
+    ],
     "authors": [
         {
-            "name": "JOO Services",
-            "email": "dev@jooservices.com"
+            "name": "Viet Vu",
+            "email": "jooservices@gmail.com"
         }
     ],
+    "support": {
+        "issues": "https://github.com/jooservices/laravel-controller/issues",
+        "source": "https://github.com/jooservices/laravel-controller"
+    },
     "require": {
         "php": "^8.5",
-        "illuminate/support": "^12.0",
+        "illuminate/console": "^12.0",
         "illuminate/http": "^12.0",
-        "illuminate/routing": "^12.0"
+        "illuminate/routing": "^12.0",
+        "illuminate/support": "^12.0"
     },
     "require-dev": {
         "captainhook/captainhook": "^5.23",
         "captainhook/plugin-composer": "^5.3",
-        "orchestra/testbench": "^10.0",
-        "phpunit/phpunit": "^12.0 || ^13.0",
+        "friendsofphp/php-cs-fixer": "^3.65",
         "laravel/pint": "^1.0",
-        "phpstan/phpstan": "^1.10",
+        "orchestra/testbench": "^10.0",
         "phpmd/phpmd": "^2.15",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^12.0 || ^13.0",
         "squizlabs/php_codesniffer": "^3.7 || ^4.0"
     },
     "autoload": {
@@ -42,6 +66,8 @@
         "test:coverage": "vendor/bin/phpunit --coverage-html build/coverage --coverage-clover build/coverage.xml",
         "lint:pint": "vendor/bin/pint --test",
         "lint:pint:fix": "vendor/bin/pint",
+        "lint:cs": "vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff --sequential",
+        "lint:cs:fix": "vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --sequential",
         "lint:phpcs": "vendor/bin/phpcs --standard=phpcs.xml",
         "lint:phpstan": "XDEBUG_MODE=off vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=512M",
         "lint:phpmd": "php -d error_reporting=24575 vendor/bin/phpmd src text phpmd.xml",
@@ -52,10 +78,12 @@
         ],
         "lint:all": [
             "@lint",
-            "@lint:phpmd"
+            "@lint:phpmd",
+            "@lint:cs"
         ],
         "lint:fix": [
-            "@lint:pint:fix"
+            "@lint:pint:fix",
+            "@lint:cs:fix"
         ],
         "analyse": "@lint:phpstan",
         "check": [

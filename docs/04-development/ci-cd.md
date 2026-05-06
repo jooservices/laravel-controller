@@ -27,15 +27,15 @@ This repository now matches the `jooservices/dto` command map for the core packa
 - `lint:phpcs`
 - `lint:phpstan`
 - `lint:phpmd`
+- `lint:cs`
+- `lint:cs:fix`
 - `lint`
 - `lint:all`
 - `lint:fix`
 - `check`
 - `ci`
 
-Intentional differences from `jooservices/dto`:
-
-- no `lint:cs` or `lint:cs:fix`, because this package does not include `php-cs-fixer`
+Pint is the formatting authority. PHP-CS-Fixer is configured as a secondary consistency check and must not introduce rules that fight Pint.
 
 ## Git hooks
 

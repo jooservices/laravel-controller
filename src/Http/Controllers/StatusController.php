@@ -24,27 +24,81 @@ class StatusController extends BaseApiController
             'timestamp' => now()->toIso8601String(),
         ];
 
-        $statusConfig = (array) config('laravel-controller.status', []);
+        $configuredStatus = config('laravel-controller.status', []);
+        $statusConfig = is_array($configuredStatus)
+            ? $this->normalizeStatusConfig($configuredStatus)
+            : [];
 
-        if (! empty($statusConfig['include_version'])) {
+        if (($statusConfig['include_version'] ?? false) === true) {
             $data['version'] = $this->appVersion();
         }
 
-        if (! empty($statusConfig['include_environment'])) {
+        if (($statusConfig['include_environment'] ?? false) === true) {
             $data['environment'] = app()->environment();
         }
 
-        if (! empty($statusConfig['include_maintenance'])) {
+        if (($statusConfig['include_maintenance'] ?? false) === true) {
             $data['maintenance'] = app()->isDownForMaintenance();
         }
 
-        $checks = $statusConfig['checks'] ?? [];
-        $timeoutSeconds = (int) ($statusConfig['checks_timeout_seconds'] ?? 5);
+        $checks = $this->configuredChecks($statusConfig);
+        $timeoutSeconds = $this->configuredTimeoutSeconds($statusConfig);
         if ($checks !== []) {
             $data['checks'] = $this->runHealthChecks($checks, $timeoutSeconds);
         }
 
         return $this->success($data);
+    }
+
+    /**
+     * @param  array<mixed>  $statusConfig
+     * @return array<string, mixed>
+     */
+    protected function normalizeStatusConfig(array $statusConfig): array
+    {
+        $normalized = [];
+
+        foreach ($statusConfig as $key => $value) {
+            $normalized[(string) $key] = $value;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $statusConfig
+     * @return array<int, string>
+     */
+    protected function configuredChecks(array $statusConfig): array
+    {
+        $checks = $statusConfig['checks'] ?? [];
+
+        if (! is_array($checks)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $checks,
+            static fn (mixed $check): bool => is_string($check) && $check !== ''
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $statusConfig
+     */
+    protected function configuredTimeoutSeconds(array $statusConfig): int
+    {
+        $timeout = $statusConfig['checks_timeout_seconds'] ?? 5;
+
+        if (is_int($timeout)) {
+            return $timeout;
+        }
+
+        if (is_string($timeout) && ctype_digit($timeout)) {
+            return (int) $timeout;
+        }
+
+        return 5;
     }
 
     /**
@@ -146,6 +200,6 @@ class StatusController extends BaseApiController
      */
     protected function healthCheckFailureMessage(Throwable $exception): string
     {
-        return config('app.debug', false) ? $exception->getMessage() : 'check failed';
+        return config('app.debug', false) === true ? $exception->getMessage() : 'check failed';
     }
 }

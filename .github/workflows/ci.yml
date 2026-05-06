@@ -106,16 +106,3 @@ jobs:
         with:
           token: ${{ env.CODECOV_TOKEN }}
           files: ./build/coverage.xml
-
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    needs: security
-    if: github.event_name == 'pull_request'
-    continue-on-error: true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6.0.2
-
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4

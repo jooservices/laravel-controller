@@ -5,6 +5,7 @@ namespace JOOservices\LaravelController\Providers;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use JOOservices\LaravelController\Console\Commands\LaravelControllerDoctorCommand;
 use Symfony\Component\Finder\Finder;
 
 class LaravelControllerServiceProvider extends ServiceProvider
@@ -12,7 +13,7 @@ class LaravelControllerServiceProvider extends ServiceProvider
     /**
      * Bootstrap services.
      *
-     * @SuppressWarnings(PHPMD.StaticAccess)
+     * @SuppressWarnings("PHPMD.StaticAccess")
      */
     public function boot(): void
     {
@@ -26,7 +27,7 @@ class LaravelControllerServiceProvider extends ServiceProvider
         ], 'laravel-controller-lang');
 
         // Load Package Routes (if enabled)
-        if (config('laravel-controller.routes.enabled', true)) {
+        if (config('laravel-controller.routes.enabled', true) === true) {
             $prefix = config('laravel-controller.routes.prefix', 'api/v1');
 
             Route::group([
@@ -39,6 +40,12 @@ class LaravelControllerServiceProvider extends ServiceProvider
 
         // Auto-map User's Routes (feature of this package)
         $this->mapApiRoutes();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                LaravelControllerDoctorCommand::class,
+            ]);
+        }
     }
 
     /**
@@ -55,7 +62,7 @@ class LaravelControllerServiceProvider extends ServiceProvider
     /**
      * Map API routes automatically based on version files.
      *
-     * @SuppressWarnings(PHPMD.StaticAccess)
+     * @SuppressWarnings("PHPMD.StaticAccess")
      */
     protected function mapApiRoutes(): void
     {

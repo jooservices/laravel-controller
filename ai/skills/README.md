@@ -32,6 +32,8 @@ All checked-in adapters should reflect the same repository truth:
 - docs and README synchronization rules
 - CI and release expectations
 - required Composer command map
+- Laravel Resource as the presentation boundary
+- `develop` as the current integration branch
 
 ## Current difference from `jooservices/dto`
 

@@ -1,30 +1,41 @@
 # Basic Controller
 
+This example follows the recommended application flow:
+
+```text
+Request -> Controller -> FormRequest -> Service -> Repository -> Model
+```
+
 ```php
+<?php
+
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Requests\ProductRequest;
+use App\Http\Requests\ProductIndexRequest;
+use App\Http\Requests\ProductStoreRequest;
 use App\Http\Resources\ProductResource;
-use App\Models\Product;
+use App\Services\ProductService;
+use Illuminate\Http\JsonResponse;
 use JOOservices\LaravelController\Http\Controllers\BaseApiController;
 
-class ProductController extends BaseApiController
+final class ProductController extends BaseApiController
 {
-    public function index()
+    public function index(ProductIndexRequest $request, ProductService $products): JsonResponse
     {
-        return $this->respondWithPagination(Product::paginate(15), ProductResource::class);
+        return $this->respondWithPagination(
+            paginator: $products->paginate($request->validated()),
+            resourceClass: ProductResource::class,
+            message: 'Products retrieved successfully.',
+        );
     }
 
-    public function store(ProductRequest $request)
+    public function store(ProductStoreRequest $request, ProductService $products): JsonResponse
     {
-        $product = Product::create($request->validated());
-
-        return $this->created(['id' => $product->id], 'Product created successfully');
-    }
-
-    public function show(Product $product)
-    {
-        return $this->respondWithItem($product, ProductResource::class);
+        return $this->respondWithResource(
+            resource: new ProductResource($products->create($request->validated())),
+            message: 'Product created successfully.',
+            code: 201,
+        );
     }
 }
 ```

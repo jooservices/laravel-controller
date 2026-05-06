@@ -39,6 +39,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Trace ID
+    |--------------------------------------------------------------------------
+    |
+    | The package reads this request header before generating a fallback UUID.
+    | Keep the default unless your edge/API gateway already emits a different
+    | correlation header.
+    |
+    */
+    'trace_id' => [
+        'header' => 'X-Trace-ID',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | 204 No Content Envelope
     |--------------------------------------------------------------------------
     |

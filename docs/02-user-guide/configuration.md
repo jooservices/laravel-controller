@@ -1,10 +1,14 @@
 # Configuration
 
-The package configuration lives in `config/laravel-controller.php` after publishing.
+Publish the config file:
+
+```bash
+php artisan vendor:publish --provider="JOOservices\LaravelController\Providers\LaravelControllerServiceProvider" --tag="config"
+```
 
 Important options:
 
-## Response keys
+## Response Keys
 
 Override top-level keys if your frontend expects a different envelope schema.
 
@@ -15,26 +19,25 @@ Override top-level keys if your frontend expects a different envelope schema.
 ],
 ```
 
-## Custom response formatter
+## Trace ID
 
-Provide a formatter class when key remapping is not enough and you need a different envelope shape.
+```php
+'trace_id' => [
+    'header' => 'X-Trace-ID',
+],
+```
+
+The package reads this request header before generating a UUID fallback.
+
+## Custom Response Formatter
 
 ```php
 'response_formatter' => App\Support\ApiResponseFormatter::class,
 ```
 
-The class must implement `JOOservices\LaravelController\Contracts\ResponseFormatter` and return the full payload array. The package still controls the HTTP status code; your formatter controls only the JSON body.
+The class must implement `JOOservices\LaravelController\Contracts\ResponseFormatter`.
 
-## Routes
-
-```php
-'routes' => [
-    'enabled' => true,
-    'prefix' => 'api/v1',
-],
-```
-
-## Status metadata
+## Status Endpoint
 
 ```php
 'status' => [
@@ -46,12 +49,9 @@ The class must implement `JOOservices\LaravelController\Contracts\ResponseFormat
 ],
 ```
 
-## Other commonly used options
+## Diagnostics
 
-- `envelope_204`
-- `use_translations`
-- `validation.message`
-- `success_codes`
-- `item_links`
-- `item_links_default`
-- `pagination_links`
+```bash
+php artisan laravel-controller:doctor
+php artisan laravel-controller:doctor --json
+```

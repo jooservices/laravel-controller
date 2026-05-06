@@ -46,3 +46,10 @@ The package name is `jooservices/laravel-controller`. The PHP namespace is `JOOs
 - [Testing](./04-development/testing.md)
 - [CI/CD](./04-development/ci-cd.md)
 - [AI Skills](./04-development/ai-skills.md)
+
+### Maintenance
+
+- [Risks, Legacy, And Gaps](./05-maintenance/01-risks-legacy-and-gaps.md)
+- [Backward Compatibility](./05-maintenance/02-backward-compatibility.md)
+- [Release Checklist](./05-maintenance/03-release-checklist.md)
+- [Docs Changelog](./05-maintenance/04-docs-changelog.md)

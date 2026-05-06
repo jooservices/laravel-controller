@@ -48,6 +48,9 @@ Useful local commands:
 
 ```bash
 composer lint:all
+composer lint:fix
 composer test
 composer test:coverage
+composer check
+composer ci
 ```

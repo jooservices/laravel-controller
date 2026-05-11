@@ -51,4 +51,9 @@ class ConfigurationTest extends TestCase
         $this->assertNotEmpty($data['diagnostics']['request_id']);
         $this->assertArrayNotHasKey('success', $data);
     }
+
+    public function testDefaultConfigurationIncludesHostRouteAutoMappingSwitch()
+    {
+        $this->assertTrue(config('laravel-controller.routes.auto_map_host_routes'));
+    }
 }

@@ -2,7 +2,10 @@
 
 ## CI
 
-The GitHub Actions CI workflow runs:
+The GitHub Actions CI workflow runs on pushes and pull requests for `develop`
+and `master`.
+
+It runs:
 
 - `composer audit`
 - a lint matrix for Pint, PHPCS, PHPStan, and PHPMD
@@ -52,6 +55,10 @@ Installed hooks enforce:
 Composer installs and updates automatically run `captainhook install --force --skip-existing`.
 
 ## Release
+
+Feature and fix work starts from latest `develop` and targets `develop` by PR.
+Release branches are created from latest `develop`, named `release/<version>`,
+and target `master`. Release metadata is updated on the release branch.
 
 The release workflow runs on tags matching `v*.*.*`.
 

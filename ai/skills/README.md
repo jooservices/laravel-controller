@@ -34,6 +34,7 @@ All checked-in adapters should reflect the same repository truth:
 - required Composer command map
 - Laravel Resource as the presentation boundary
 - `develop` as the current integration branch
+- `master` as the stable/release branch
 
 ## Current difference from `jooservices/dto`
 

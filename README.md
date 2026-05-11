@@ -11,6 +11,8 @@
 
 Composer package: `jooservices/laravel-controller`
 
+Current release: `1.3.0`
+
 ## Features
 
 - base API controller helpers for success, error, validation, status, and no-content responses

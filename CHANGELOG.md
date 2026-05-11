@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-11
+
+### Added
+
+- Configurable `routes.auto_map_host_routes` switch for applications that want to own all API route registration.
+- Additional response helper coverage for resource collection metadata, 204 envelopes, and doctor diagnostics.
+
+### Changed
+
+- Resource collection top-level links are preserved under `meta.links` instead of being flattened into `meta`.
+- Doctor command status timeout validation now matches runtime behavior by accepting integers and digit strings.
+- CI, release checklist, and agent guidance now reflect `master` as the stable/release branch and `develop` as the integration branch.
+- Composer lock refreshed within the existing PHP 8.5 and Laravel 12 constraints.
+
+### Fixed
+
+- Release flow documentation no longer assumes the repository has no stable branch.
+
 ## [1.2.0] - 2026-04-08
 
 ### Added

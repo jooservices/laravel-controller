@@ -38,8 +38,9 @@ class LaravelControllerServiceProvider extends ServiceProvider
             });
         }
 
-        // Auto-map User's Routes (feature of this package)
-        $this->mapApiRoutes();
+        if (config('laravel-controller.routes.auto_map_host_routes', true) === true) {
+            $this->mapApiRoutes();
+        }
 
         if ($this->app->runningInConsole()) {
             $this->commands([

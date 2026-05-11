@@ -193,6 +193,7 @@ Important config keys:
 - `validation.message`
 - `routes.enabled`
 - `routes.prefix`
+- `routes.auto_map_host_routes`
 - `status`
 - `pagination_links`
 - `item_links`

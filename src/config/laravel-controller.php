@@ -100,6 +100,7 @@ return [
     'routes' => [
         'enabled' => true,
         'prefix' => 'api/v1',
+        'auto_map_host_routes' => true,
     ],
 
     /*

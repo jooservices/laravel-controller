@@ -270,7 +270,11 @@ trait HasApiResponses
             /** @var array<string, mixed> $response */
             $response = $data->response()->getData(true);
             $data = $response['data'] ?? [];
-            $meta = array_merge($meta, (array) ($response['meta'] ?? []), (array) ($response['links'] ?? []));
+            $meta = array_merge($meta, (array) ($response['meta'] ?? []));
+
+            if (isset($response['links']) && is_array($response['links']) && $response['links'] !== []) {
+                $meta['links'] = $response['links'];
+            }
         } elseif ($data instanceof JsonResource) {
             $data = $data->resolve();
         }

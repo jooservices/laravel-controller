@@ -55,8 +55,11 @@ Before making non-trivial changes, also read:
 ## Git flow
 
 - `develop` is the active integration branch.
-- No `master` or `main` branch exists in the current remote state.
+- `master` is the stable/release branch.
 - Create feature branches from latest `develop`.
+- Feature/fix branches target `develop`.
+- Create release branches from latest `develop` and target `master`.
+- Update release metadata on the release branch, not directly on `master`.
 - Run `composer check` before commit.
 - Commit author for agent work: `Viet Vu <jooservices@gmail.com>`.
 

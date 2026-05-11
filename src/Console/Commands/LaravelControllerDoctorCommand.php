@@ -146,13 +146,14 @@ class LaravelControllerDoctorCommand extends Command
 
         $checks = $status['checks'] ?? [];
         $timeout = $status['checks_timeout_seconds'] ?? null;
+        $timeoutIsValid = is_int($timeout) || (is_string($timeout) && ctype_digit($timeout));
 
         return [
             'name' => 'status',
-            'ok' => is_array($checks) && is_int($timeout),
-            'message' => is_array($checks) && is_int($timeout)
+            'ok' => is_array($checks) && $timeoutIsValid,
+            'message' => is_array($checks) && $timeoutIsValid
                 ? 'valid'
-                : 'checks must be an array and checks_timeout_seconds must be an integer',
+                : 'checks must be an array and checks_timeout_seconds must be an integer or digit string',
         ];
     }
 

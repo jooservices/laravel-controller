@@ -49,6 +49,23 @@ The class must implement `JOOservices\LaravelController\Contracts\ResponseFormat
 ],
 ```
 
+`checks_timeout_seconds` may be an integer or a digit string. Runtime status
+checks normalize both forms, and the doctor command reports invalid values.
+
+## Routes
+
+```php
+'routes' => [
+    'enabled' => true,
+    'prefix' => 'api/v1',
+    'auto_map_host_routes' => true,
+],
+```
+
+Set `routes.enabled` to `false` to disable package routes such as `/status`.
+Set `routes.auto_map_host_routes` to `false` when the host application should
+own all API route registration itself.
+
 ## Diagnostics
 
 ```bash

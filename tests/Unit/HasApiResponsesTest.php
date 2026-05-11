@@ -159,6 +159,22 @@ class HasApiResponsesTest extends TestCase
         $this->assertEquals(1, $data['data'][0]['id']);
     }
 
+    public function testResourceCollectionKeepsAdditionalLinksUnderMetaLinks()
+    {
+        $collection = JsonResource::collection(collect([['id' => 1]]))
+            ->additional([
+                'meta' => ['page' => 1],
+                'links' => ['self' => 'https://example.test/users'],
+            ]);
+
+        $response = $this->traitObject->success($collection);
+        $data = $response->getData(true);
+
+        $this->assertSame(['id' => 1], $data['data'][0]);
+        $this->assertSame(1, $data['meta']['page']);
+        $this->assertSame(['self' => 'https://example.test/users'], $data['meta']['links']);
+    }
+
     public function testManualTraceId()
     {
         $uuid = (string) Str::uuid();
@@ -277,5 +293,18 @@ class HasApiResponsesTest extends TestCase
         $data = $response->getData(true);
 
         $this->assertArrayNotHasKey('warnings', $data);
+    }
+
+    public function testNoContentCanReturnEnvelopeWhenConfigured()
+    {
+        config(['laravel-controller.envelope_204' => true]);
+
+        $response = $this->traitObject->noContent();
+        $data = $response->getData(true);
+
+        $this->assertSame(204, $response->getStatusCode());
+        $this->assertTrue($data['success']);
+        $this->assertSame(204, $data['code']);
+        $this->assertNull($data['data']);
     }
 }

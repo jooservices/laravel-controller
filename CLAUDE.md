@@ -12,3 +12,4 @@ When working in this repository:
 - keep Laravel Resources as presentation transformers; response envelopes only wrap output
 - assume CI will enforce Pint, PHPCS, PHPStan, PHPMD, PHP-CS-Fixer, coverage, and tests
 - use `develop` as the active integration branch
+- use `master` as the stable/release branch

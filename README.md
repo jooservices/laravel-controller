@@ -11,6 +11,8 @@
 
 Composer package: `jooservices/laravel-controller`
 
+Current release: `1.3.0`
+
 ## Features
 
 - base API controller helpers for success, error, validation, status, and no-content responses
@@ -193,6 +195,7 @@ Important config keys:
 - `validation.message`
 - `routes.enabled`
 - `routes.prefix`
+- `routes.auto_map_host_routes`
 - `status`
 - `pagination_links`
 - `item_links`

@@ -46,4 +46,35 @@ class DoctorCommandTest extends TestCase
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('resolves and implements ResponseFormatter', $output);
     }
+
+    public function testDoctorCommandAcceptsDigitStringStatusTimeout()
+    {
+        config(['laravel-controller.status.checks_timeout_seconds' => '5']);
+
+        $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
+
+        $this->assertSame(0, $exitCode);
+    }
+
+    public function testDoctorCommandRejectsInvalidStatusTimeout()
+    {
+        config(['laravel-controller.status.checks_timeout_seconds' => 'soon']);
+
+        $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
+        $output = Artisan::output();
+
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('integer or digit string', $output);
+    }
+
+    public function testDoctorCommandRejectsInvalidTraceHeader()
+    {
+        config(['laravel-controller.trace_id.header' => '']);
+
+        $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
+        $output = Artisan::output();
+
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('must be a non-empty string', $output);
+    }
 }

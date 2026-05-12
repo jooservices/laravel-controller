@@ -228,6 +228,7 @@ This package is not:
 - [User Guide](docs/02-user-guide/response-envelopes.md)
 - [Examples](docs/03-examples/basic-controller.md)
 - [Development](docs/04-development/setup.md)
+- [Release Process](docs/04-development/release-process.md)
 - [Maintenance](docs/05-maintenance/01-risks-legacy-and-gaps.md)
 
 ## AI Contributor Support

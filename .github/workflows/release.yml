@@ -32,5 +32,5 @@ jobs:
           if [ -n "$PACKAGIST_USERNAME" ] && [ -n "$PACKAGIST_TOKEN" ]; then
             curl -XPOST -H'content-type:application/json' \
               "https://packagist.org/api/update-package?username=$PACKAGIST_USERNAME" \
-              -d'{"repository":{"url":"https://packagist.org/packages/jooservices/laravel-controller"},"api_token":"'"$PACKAGIST_TOKEN"'"}'
+              -d'{"repository":{"url":"https://github.com/jooservices/laravel-controller"},"api_token":"'"$PACKAGIST_TOKEN"'"}'
           fi

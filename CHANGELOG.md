@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-06-25
+
+### Added
+
+- Added Laravel 13 support alongside Laravel 12: `illuminate/console`, `illuminate/http`, `illuminate/routing`, and `illuminate/support` now accept `^12.0|^13.0`
+- Added `orchestra/testbench:^11.0` to `require-dev` and a CI matrix testing both Laravel 12 and Laravel 13
+
+### Fixed
+
+- Fixed the release workflow sending a Packagist URL instead of the GitHub repository URL to Packagist's `update-package` endpoint, which prevented Packagist from refreshing on tagged releases.
+
 ## [1.3.0] - 2026-05-11
 
 ### Added

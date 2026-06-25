@@ -40,7 +40,7 @@ The goal is not to find a single winner. These packages solve different layers o
 
 | Package | Current reading |
 |-----|-----|
-| JOOservices Laravel Controller | Native to this repository, currently aligned with Laravel 12 and PHP 8.5. |
+| JOOservices Laravel Controller | Native to this repository, currently aligned with Laravel 12/13 and PHP 8.5. |
 | marcin-orlowski/laravel-api-response-builder | Actively maintained and recently released for Laravel 12. |
 | flugg/laravel-responder | Still maintained, but architecturally tied to Fractal and a transformer-first workflow. |
 | laravel-json-api/laravel | Actively maintained and standards-driven, but much heavier than this package's current scope. |

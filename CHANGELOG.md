@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-06-26
+
+### Fixed
+
+- Published a patch release so Packagist resolves the Laravel 13-compatible package metadata from
+  the `v1.4.x` line. The package continues to support Laravel 12 and Laravel 13 via
+  `illuminate/*:^12.0|^13.0`.
+
 ## [1.4.0] - 2026-06-25
 
 ### Added

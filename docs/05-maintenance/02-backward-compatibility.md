@@ -19,4 +19,8 @@ See [UPGRADE-4.0.md](../../UPGRADE-4.0.md).
 - `respondWithPagination()`, `respondWithCursorPagination()`, `respondWithOffsetPagination()`
 - `respondWithProblem()` (v4)
 
-Do not change the default envelope keys, status codes, or trace ID behavior without tests and documentation.
+## Compatible additions (v4.0.1)
+
+- `respondWithPagination()` accepts simple `Paginator` and `CursorPaginator` (in addition to LengthAware)
+- Unrecognized paginator inputs throw instead of leaking raw payloads
+- `JsonResource::additional()` / `with()` metadata is preserved in `meta`

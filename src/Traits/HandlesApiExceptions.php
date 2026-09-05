@@ -9,6 +9,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
@@ -25,30 +26,79 @@ trait HandlesApiExceptions
      */
     public function renderApiException(Throwable $exception): JsonResponse
     {
-        if ($exception instanceof ValidationException) {
-            $message = $this->validationExceptionMessage($exception);
+        return match (true) {
+            $exception instanceof ValidationException => $this->renderValidationException($exception),
+            $exception instanceof ModelNotFoundException => $this->renderModelNotFoundException($exception),
+            $exception instanceof NotFoundHttpException => $this->renderNotFoundHttpException($exception),
+            $exception instanceof AuthenticationException => $this->unauthorized($exception->getMessage()),
+            $exception instanceof AuthorizationException => $this->renderAuthorizationException($exception),
+            $exception instanceof HttpException => $this->renderHttpException($exception),
+            default => $this->renderUnhandledException($exception),
+        };
+    }
 
-            return $this->unprocessable($message, $exception->errors());
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderValidationException(ValidationException $exception): JsonResponse
+    {
+        return $this->unprocessable(
+            $this->validationExceptionMessage($exception),
+            $exception->errors(),
+        );
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderModelNotFoundException(Throwable $exception): JsonResponse
+    {
+        report($exception);
+
+        return $this->notFound('Resource not found');
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderNotFoundHttpException(NotFoundHttpException $exception): JsonResponse
+    {
+        $message = $exception->getMessage();
+
+        return $this->notFound($message !== '' ? $message : 'Resource not found');
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderAuthorizationException(AuthorizationException $exception): JsonResponse
+    {
+        $status = $exception->status() ?? Response::HTTP_FORBIDDEN;
+        $message = $exception->getMessage();
+
+        if ($message === '') {
+            $message = $status === Response::HTTP_NOT_FOUND
+                ? self::MESSAGE_NOT_FOUND
+                : 'Forbidden';
         }
 
-        if ($exception instanceof ModelNotFoundException || $exception instanceof NotFoundHttpException) {
-            $message = $exception->getMessage();
+        return $this->error($message, $status);
+    }
 
-            return $this->notFound($message !== '' ? $message : 'Resource not found');
-        }
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderHttpException(HttpException $exception): JsonResponse
+    {
+        return $this->error($exception->getMessage(), $exception->getStatusCode())
+            ->withHeaders($exception->getHeaders());
+    }
 
-        if ($exception instanceof AuthenticationException) {
-            return $this->unauthorized($exception->getMessage());
-        }
-
-        if ($exception instanceof AuthorizationException) {
-            return $this->forbidden($exception->getMessage());
-        }
-
-        if ($exception instanceof HttpException) {
-            return $this->error($exception->getMessage(), $exception->getStatusCode());
-        }
-
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderUnhandledException(Throwable $exception): JsonResponse
+    {
         $debug = config('app.debug');
 
         return $this->internalError(

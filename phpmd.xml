@@ -5,19 +5,12 @@
          xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0 http://pmd.sf.net/ruleset_xml_schema.xsd"
          xsi:noNamespaceSchemaLocation="http://pmd.sf.net/ruleset_xml_schema.xsd">
 
-    <description>Maximum PHPMD rulesets. No rule exclusions.</description>
+    <description>Maximum PHPMD rulesets. No rule exclusions. No suppressions.</description>
 
     <rule ref="rulesets/codesize.xml"/>
-    <rule ref="rulesets/design.xml">
-        <exclude name="CouplingBetweenObjects"/>
-    </rule>
+    <rule ref="rulesets/controversial.xml"/>
+    <rule ref="rulesets/design.xml"/>
     <rule ref="rulesets/unusedcode.xml"/>
     <rule ref="rulesets/naming.xml"/>
     <rule ref="rulesets/cleancode.xml"/>
-
-    <rule ref="rulesets/design.xml/CouplingBetweenObjects">
-        <properties>
-            <property name="maximum" value="15"/>
-        </properties>
-    </rule>
 </ruleset>

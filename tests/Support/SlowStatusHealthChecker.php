@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace JOOservices\LaravelController\Tests\Support;
 
-use JOOservices\LaravelController\Http\Controllers\StatusController;
+use JOOservices\LaravelController\Support\StatusHealthChecker;
 use Psr\SimpleCache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
 use RuntimeException;
 
 /**
  * Test double that delays one named check so timeout branches can be exercised.
  */
-final class SlowStatusController extends StatusController
+final class SlowStatusHealthChecker extends StatusHealthChecker
 {
     /**
      * @return array{ok: bool, message?: string}

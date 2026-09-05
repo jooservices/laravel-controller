@@ -55,18 +55,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | 204 No Content Envelope
-    |--------------------------------------------------------------------------
-    |
-    | When true, noContent() returns the same envelope as other responses
-    | (success, code, message, data: null, meta, trace_id) so clients
-    | always receive a consistent top-level shape. When false, 204 returns [].
-    |
-    */
-    'envelope_204' => false,
-
-    /*
-    |--------------------------------------------------------------------------
     | Success HTTP Codes
     |--------------------------------------------------------------------------
     |

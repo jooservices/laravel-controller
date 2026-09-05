@@ -8,7 +8,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use JOOservices\LaravelController\Tests\Support\ApiResponsesDouble;
+use JOOservices\LaravelController\Tests\Support\FakeItemResource;
 use JOOservices\LaravelController\Tests\TestCase;
 use JsonSerializable;
 use UnexpectedValueException;
@@ -50,13 +52,13 @@ final class HasApiResponsesTest extends TestCase
     }
 
     /**
-     * @throws UnexpectedValueException
+     * @throws InvalidArgumentException
      */
     public function testNoContentResponse(): void
     {
         $response = $this->traitObject->noContent();
         self::assertSame(204, $response->getStatusCode());
-        self::assertSame([], $this->jsonPayload($response));
+        self::assertSame('', $response->getContent());
     }
 
     /**
@@ -169,7 +171,7 @@ final class HasApiResponsesTest extends TestCase
     }
 
     /**
-     * @throws UnexpectedValueException
+     * @throws InvalidArgumentException
      */
     public function testRespondNoContentAlias(): void
     {
@@ -328,7 +330,7 @@ final class HasApiResponsesTest extends TestCase
     }
 
     /**
-     * @throws UnexpectedValueException
+     * @throws InvalidArgumentException
      */
     public function testNoContentReturnsCorrectStatus(): void
     {
@@ -339,12 +341,15 @@ final class HasApiResponsesTest extends TestCase
     /**
      * @throws UnexpectedValueException
      */
-    public function testRespondWithItemFallsBackToSuccessWhenClassMissing(): void
+    public function testRespondWithItemRejectsMissingResourceClass(): void
     {
-        $response = $this->traitObject->respondWithItem(['id' => 1, 'name' => 'Test'], 'NonExistentResource');
-        $data = $this->jsonPayload($response);
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame(['id' => 1, 'name' => 'Test'], $data['data']);
+        $this->expectException(UnexpectedValueException::class);
+        $this->expectExceptionMessage('API resource class [NonExistentResource] must exist');
+
+        $this->traitObject->respondWithItem(
+            ['id' => 1, 'name' => 'Test', 'internal_note' => 'secret'],
+            'NonExistentResource',
+        );
     }
 
     /**
@@ -405,18 +410,51 @@ final class HasApiResponsesTest extends TestCase
     }
 
     /**
-     * @throws UnexpectedValueException
+     * @throws InvalidArgumentException
      */
-    public function testNoContentCanReturnEnvelopeWhenConfigured(): void
+    public function testNoContentReturnsEmptyBodyWithoutEnvelope(): void
     {
-        config(['laravel-controller.envelope_204' => true]);
-
         $response = $this->traitObject->noContent();
-        $data = $this->jsonPayload($response);
 
         self::assertSame(204, $response->getStatusCode());
-        self::assertTrue($data['success']);
-        self::assertSame(204, $data['code']);
-        self::assertNull($data['data']);
+        self::assertSame('', $response->getContent());
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testSuccessWithNon2xxCodeDefaultsSuccessFalse(): void
+    {
+        $response = $this->traitObject->success(['id' => 1], 'Oops', 500);
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(500, $response->getStatusCode());
+        self::assertFalse($data['success']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testResourceCollectionWithoutWrappingKeepsItems(): void
+    {
+        JsonResource::withoutWrapping();
+
+        try {
+            $name = fake()->firstName();
+            $collection = FakeItemResource::collection([
+                ['id' => 1, 'name' => $name, 'internal_note' => 'secret'],
+            ]);
+            $response = $this->traitObject->respondWithResourceCollection($collection);
+            $data = $this->jsonPayload($response);
+
+            self::assertIsArray($data['data']);
+            self::assertCount(1, $data['data']);
+            /** @var list<array<string, mixed>> $rows */
+            $rows = $data['data'];
+            self::assertSame($name, $rows[0]['name']);
+            self::assertArrayNotHasKey('internal_note', $rows[0]);
+        } finally {
+            JsonResource::wrap('data');
+        }
     }
 }

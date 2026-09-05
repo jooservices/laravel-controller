@@ -33,10 +33,7 @@ final class ExceptionHandlingTest extends TestCase
         $data = $this->jsonPayload($response);
 
         self::assertSame(404, $response->getStatusCode());
-        self::assertSame(
-            'No query results for model [' . UserModelStub::class . '].',
-            $data['message'],
-        );
+        self::assertSame('Resource not found', $data['message']);
     }
 
     /**
@@ -136,6 +133,22 @@ final class ExceptionHandlingTest extends TestCase
     /**
      * @throws UnexpectedValueException
      */
+    public function testItPreservesAuthorizationExceptionAsNotFoundStatus(): void
+    {
+        $handler = new ApiExceptionHandlerDouble();
+        $message = fake()->sentence();
+        $exception = (new AuthorizationException($message))->asNotFound();
+
+        $response = $handler->renderApiException($exception);
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(404, $response->getStatusCode());
+        self::assertSame($message, $data['message']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
     public function testItHandlesHttpException(): void
     {
         $handler = new ApiExceptionHandlerDouble();
@@ -145,6 +158,22 @@ final class ExceptionHandlingTest extends TestCase
 
         self::assertSame(418, $response->getStatusCode());
         self::assertSame($message, $data['message']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItPreservesHttpExceptionHeaders(): void
+    {
+        $handler = new ApiExceptionHandlerDouble();
+        $message = fake()->sentence();
+        $retryAfter = (string) fake()->numberBetween(1, 120);
+        $exception = new HttpException(429, $message, null, ['Retry-After' => $retryAfter]);
+
+        $response = $handler->renderApiException($exception);
+
+        self::assertSame(429, $response->getStatusCode());
+        self::assertSame($retryAfter, $response->headers->get('Retry-After'));
     }
 
     /**

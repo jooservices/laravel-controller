@@ -17,10 +17,12 @@
 ],
 ```
 
-## 204 Envelope Support
+## Success Code Allowlist
 
 ```php
-'envelope_204' => true,
+// null (default): any HTTP 2xx sets success: true
+// explicit list: only listed codes are treated as success
+'success_codes' => [200, 201],
 ```
 
 ## Custom Response Formatter

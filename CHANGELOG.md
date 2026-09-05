@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+- Invalid or missing API Resource classes now throw `UnexpectedValueException` instead of falling back to raw payloads (prevents leaking unfiltered fields).
+- `ResourceCollection` payloads respect `JsonResource::withoutWrapping()` instead of hard-reading a `data` key.
+- Default `success` envelope flag is true only for HTTP 2xx unless `success_codes` is set.
+- `noContent()` always returns an empty 204 body (RFC 9110); `envelope_204` was removed.
+- Status readiness checks return HTTP 503 when any configured check fails; health probes moved to `StatusHealthChecker`.
+- PHPMD now includes the full rulesets including `controversial`, with no suppressions.
+
+### Fixed
+
+- `AuthorizationException::asNotFound()` preserves HTTP 404 instead of forcing 403.
+- `HttpException` response headers (for example `Retry-After`) are preserved.
+- `ModelNotFoundException` returns a public `Resource not found` message; details go to the exception reporter.
+
 ## [1.4.0] - 2026-06-25
 
 ### Added

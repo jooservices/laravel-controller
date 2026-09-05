@@ -144,7 +144,9 @@ public function archive(UserArchiveRequest $request, UserService $users): JsonRe
 
 ## Status Endpoint
 
-When package routes are enabled, the status endpoint is available under the configured prefix:
+When package routes are enabled, the status endpoint is available under the configured prefix.
+Without health checks it is a liveness probe (HTTP 200). With `status.checks` configured it acts as readiness: any failed check returns HTTP 503 and `status: unavailable`.
+
 
 ```bash
 GET /api/v1/status
@@ -190,7 +192,6 @@ Important config keys:
 - `keys`
 - `trace_id.header`
 - `use_translations`
-- `envelope_204`
 - `success_codes`
 - `validation.message`
 - `routes.enabled`

@@ -9,6 +9,7 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use InvalidArgumentException;
 use JOOservices\LaravelController\Contracts\ResponseFormatter;
 use JsonSerializable;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +18,7 @@ use UnexpectedValueException;
 
 trait HasApiResponses
 {
-    private const MESSAGE_NOT_FOUND = 'Not Found';
+    protected const MESSAGE_NOT_FOUND = 'Not Found';
 
     private const MESSAGE_UNPROCESSABLE = 'Unprocessable Entity';
 
@@ -80,7 +81,8 @@ trait HasApiResponses
 
     /**
      * Laravel-friendly alias for a 204 response.
-     * @throws UnexpectedValueException
+     *
+     * @throws InvalidArgumentException
      */
     public function respondNoContent(): JsonResponse
     {
@@ -98,24 +100,16 @@ trait HasApiResponses
 
     /**
      * Return a no content response (204).
-     * When config envelope_204 is true, returns the same envelope (data: null, trace_id, etc.).
-     * @throws UnexpectedValueException
+     * RFC 9110: 204 responses must not include a content body.
+     *
+     * @throws InvalidArgumentException
      */
     public function noContent(): JsonResponse
     {
-        if (config('laravel-controller.envelope_204', false) === true) {
-            return $this->formatResponse(
-                true,
-                Response::HTTP_NO_CONTENT,
-                $this->trans('No Content', 'no_content'),
-                null,
-                null,
-                [],
-                [],
-            );
-        }
+        $response = new JsonResponse(data: null, status: Response::HTTP_NO_CONTENT);
+        $response->setContent('');
 
-        return response()->json([], Response::HTTP_NO_CONTENT);
+        return $response;
     }
 
     /**
@@ -248,8 +242,6 @@ trait HasApiResponses
      * @param  array<int, string>|array<string, string>  $warnings
      *
      * @throws UnexpectedValueException
-     *
-     * @SuppressWarnings("PHPMD.StaticAccess")
      */
     protected function formatResponse(
         bool $success,
@@ -287,30 +279,77 @@ trait HasApiResponses
     protected function resolveResourcePayload(mixed $data, array $meta): array
     {
         if ($data instanceof ResourceCollection) {
-            /** @var array<string, mixed> $response */
+            /** @var array<string, mixed>|list<mixed> $response */
             $response = $data->response()->getData(true);
-            $data = $response['data'] ?? [];
-            $meta = array_merge($meta, (array) ($response['meta'] ?? []));
 
-            if (isset($response['links']) && is_array($response['links']) && $response['links'] !== []) {
-                $meta['links'] = $response['links'];
+            if ($this->isLaravelResourceEnvelope($response)) {
+                /** @var array<string, mixed> $response */
+                $data = $response['data'];
+                $meta = array_merge($meta, (array) ($response['meta'] ?? []));
+
+                if (isset($response['links']) && is_array($response['links']) && $response['links'] !== []) {
+                    $meta['links'] = $response['links'];
+                }
+
+                return [$data, $this->normalizeStringKeyedArray($meta)];
             }
-        } elseif ($data instanceof JsonResource) {
+
+            return [$response, $this->normalizeStringKeyedArray($meta)];
+        }
+
+        if ($data instanceof JsonResource) {
             $data = $data->resolve();
         }
 
         return [$data, $this->normalizeStringKeyedArray($meta)];
     }
 
+    /**
+     * True when Laravel returned an associative envelope (wrapped or paginated),
+     * not a bare list from JsonResource::withoutWrapping().
+     *
+     * @param  mixed  $response
+     */
+    protected function isLaravelResourceEnvelope(mixed $response): bool
+    {
+        return is_array($response)
+            && ! array_is_list($response)
+            && array_key_exists('data', $response);
+    }
+
     protected function isEffectiveSuccess(bool $success, int $code): bool
     {
-        $successCodes = config('laravel-controller.success_codes');
-
         if (! $success) {
             return false;
         }
 
-        return is_array($successCodes) ? in_array($code, $successCodes, true) : true;
+        $successCodes = config('laravel-controller.success_codes');
+
+        if (is_array($successCodes)) {
+            return in_array($code, $successCodes, true);
+        }
+
+        return $code >= Response::HTTP_OK && $code < Response::HTTP_MULTIPLE_CHOICES;
+    }
+
+    /**
+     * @param  string|null  $resourceClass
+     *
+     * @throws UnexpectedValueException
+     */
+    protected function assertApiResourceClass(?string $resourceClass): void
+    {
+        if ($resourceClass === null) {
+            return;
+        }
+
+        if (! class_exists($resourceClass) || ! is_a($resourceClass, JsonResource::class, true)) {
+            throw new UnexpectedValueException(sprintf(
+                'API resource class [%s] must exist and extend %s.',
+                $resourceClass,
+                JsonResource::class,
+            ));
+        }
     }
 
     protected function resolveTraceId(): string
@@ -496,7 +535,7 @@ trait HasApiResponses
     /**
      * Return a paginated response. Use with LengthAwarePaginator; optionally pass a resource class to transform items.
      *
-     * @param  class-string<JsonResource>|null  $resourceClass
+     * @param  string|null  $resourceClass
      * @throws UnexpectedValueException
      */
     public function respondWithPagination(
@@ -507,8 +546,10 @@ trait HasApiResponses
     ): JsonResponse {
         if ($paginator instanceof LengthAwarePaginator) {
             $items = $paginator->items();
+            $this->assertApiResourceClass($resourceClass);
 
-            if ($resourceClass !== null && class_exists($resourceClass)) {
+            if ($resourceClass !== null) {
+                /** @var class-string<JsonResource> $resourceClass */
                 $items = $resourceClass::collection($items);
             }
 
@@ -542,7 +583,7 @@ trait HasApiResponses
      * @param  iterable<mixed>  $items
      * @param  string|int|null  $cursor  Current cursor (opaque token or id).
      * @param  string|int|null  $nextCursor  Cursor for next page, or null if no next page.
-     * @param  class-string<JsonResource>|null  $resourceClass
+     * @param  string|null  $resourceClass
      * @throws UnexpectedValueException
      */
     public function respondWithCursorPagination(
@@ -553,7 +594,10 @@ trait HasApiResponses
         ?string $resourceClass = null,
     ): JsonResponse {
         $items = is_array($items) ? $items : iterator_to_array($items);
-        if ($resourceClass !== null && class_exists($resourceClass)) {
+        $this->assertApiResourceClass($resourceClass);
+
+        if ($resourceClass !== null) {
+            /** @var class-string<JsonResource> $resourceClass */
             $items = $resourceClass::collection($items)->resolve();
         }
 
@@ -570,7 +614,7 @@ trait HasApiResponses
      * Return an offset-paginated response (offset/limit style). Meta has offset, limit, total, has_more.
      *
      * @param  iterable<mixed>  $items
-     * @param  class-string<JsonResource>|null  $resourceClass
+     * @param  string|null  $resourceClass
      * @throws UnexpectedValueException
      */
     public function respondWithOffsetPagination(
@@ -581,7 +625,10 @@ trait HasApiResponses
         ?string $resourceClass = null,
     ): JsonResponse {
         $items = is_array($items) ? $items : iterator_to_array($items);
-        if ($resourceClass !== null && class_exists($resourceClass)) {
+        $this->assertApiResourceClass($resourceClass);
+
+        if ($resourceClass !== null) {
+            /** @var class-string<JsonResource> $resourceClass */
             $items = $resourceClass::collection($items)->resolve();
         }
 
@@ -598,7 +645,7 @@ trait HasApiResponses
     /**
      * @deprecated Use respondWithPagination() instead. Will be removed in the next major version.
      *
-     * @param  class-string<JsonResource>|null  $resourceClass
+     * @param  string|null  $resourceClass
      * @throws UnexpectedValueException
      */
     public function paginated(mixed $paginator, ?string $resourceClass = null): JsonResponse
@@ -610,16 +657,14 @@ trait HasApiResponses
      * Convenience helper for returning a single item via an API Resource class.
      * When item_links config is true, pass $links or use item_links_default.
      *
-     * @param  string  $resourceClass  Resource class name; falls back to raw item when missing.
+     * @param  string  $resourceClass
      * @param  array<string, string>|null  $links  HAL-style links (e.g. self, index).
      *
      * @throws UnexpectedValueException
      */
     public function respondWithItem(mixed $item, string $resourceClass, ?array $links = null): JsonResponse
     {
-        if (! class_exists($resourceClass) || ! is_a($resourceClass, JsonResource::class, true)) {
-            return $this->success($item);
-        }
+        $this->assertApiResourceClass($resourceClass);
 
         /** @var class-string<JsonResource> $resourceClass */
         $resource = $resourceClass::make($item);
@@ -665,15 +710,13 @@ trait HasApiResponses
      * Convenience helper for returning a collection via an API Resource class.
      *
      * @param  iterable<mixed>  $items
-     * @param  string  $resourceClass  Resource class name; falls back to raw items when missing.
+     * @param  string  $resourceClass
      *
      * @throws UnexpectedValueException
      */
     public function respondWithCollection(iterable $items, string $resourceClass): JsonResponse
     {
-        if (! class_exists($resourceClass) || ! is_a($resourceClass, JsonResource::class, true)) {
-            return $this->success($items);
-        }
+        $this->assertApiResourceClass($resourceClass);
 
         /** @var class-string<JsonResource> $resourceClass */
         $collection = $resourceClass::collection($items);

@@ -8,7 +8,7 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
-use JOOservices\LaravelController\Tests\Support\SlowStatusController;
+use JOOservices\LaravelController\Tests\Support\SlowStatusHealthChecker;
 use JOOservices\LaravelController\Tests\TestCase;
 use Mockery;
 use Mockery\MockInterface;
@@ -40,9 +40,10 @@ final class StatusControllerTest extends TestCase
 
         $response = $this->getJson('/api/v1/status');
 
-        $response->assertOk();
+        $response->assertStatus(503);
         $data = $response->json('data');
         self::assertIsArray($data);
+        self::assertSame('unavailable', $data['status']);
         self::assertArrayHasKey('checks', $data);
         self::assertIsArray($data['checks']);
         /** @var array<string, array{ok: bool, message?: string}> $checks */
@@ -93,7 +94,7 @@ final class StatusControllerTest extends TestCase
 
         $response = $this->getJson('/api/v1/status');
 
-        $response->assertOk();
+        $response->assertStatus(503);
         $checks = $response->json('data.checks');
         self::assertIsArray($checks);
         self::assertIsArray($checks['database']);
@@ -118,7 +119,7 @@ final class StatusControllerTest extends TestCase
 
         $response = $this->getJson('/api/v1/status');
 
-        $response->assertOk();
+        $response->assertStatus(503);
         $checks = $response->json('data.checks');
         self::assertIsArray($checks);
         self::assertIsArray($checks['database']);
@@ -139,7 +140,7 @@ final class StatusControllerTest extends TestCase
 
         $response = $this->getJson('/api/v1/status');
 
-        $response->assertOk();
+        $response->assertStatus(503);
         $checks = $response->json('data.checks');
         self::assertIsArray($checks);
         self::assertIsArray($checks['cache']);
@@ -194,12 +195,10 @@ final class StatusControllerTest extends TestCase
 
     public function testStatusMarksSubsequentChecksTimedOut(): void
     {
-        $controller = new SlowStatusController();
+        $checker = new SlowStatusHealthChecker();
 
         /** @var array<string, array{ok: bool, message?: string}> $results */
-        $results = (function (): array {
-            return $this->runHealthChecks(['slow', 'cache'], 1);
-        })->call($controller);
+        $results = $checker->run(['slow', 'cache'], 1);
 
         self::assertTrue($results['slow']['ok']);
         self::assertFalse($results['cache']['ok']);

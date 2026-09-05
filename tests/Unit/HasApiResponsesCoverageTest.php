@@ -273,16 +273,16 @@ final class HasApiResponsesCoverageTest extends TestCase
     /**
      * @throws UnexpectedValueException
      */
-    public function testRespondWithCollectionFallsBackWhenClassMissing(): void
+    public function testRespondWithCollectionRejectsMissingResourceClass(): void
     {
         $items = [['id' => fake()->randomNumber()]];
         $missingClass = 'Missing\\ResourceClassThatDoesNotExist';
         self::assertFalse(class_exists($missingClass));
 
-        $response = $this->responses->respondWithCollection($items, $missingClass);
-        $data = $this->jsonPayload($response);
+        $this->expectException(UnexpectedValueException::class);
+        $this->expectExceptionMessage('API resource class [Missing\\ResourceClassThatDoesNotExist] must exist');
 
-        self::assertSame($items, $data['data']);
+        $this->responses->respondWithCollection($items, $missingClass);
     }
 
     /**

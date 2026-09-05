@@ -1,148 +1,294 @@
+# Dedicated CI for jooservices/laravel-controller — GitHub-hosted runners
+# Pull-request quality gate: full pipeline. Post-merge heads run ci-post-merge.yml.
 name: CI
 
 on:
-  push:
-    branches: [develop, master]
   pull_request:
-    branches: [develop, master]
+    branches: [master, develop]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-
-env:
-  PHP_VERSION: '8.5'
-  CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  pull-requests: read
+  actions: read
 
 jobs:
-  security:
-    name: Security Checks
+  validate:
+    name: Validate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
-          php-version: ${{ env.PHP_VERSION }}
-          coverage: none
+          persist-credentials: false
+
+      - name: Build PHP image
+        run: tools/ci/docker-compose build php
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v6
+        id: vendor-cache
+        with:
+          path: vendor
+          key: composer-vendor-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            composer-vendor-
 
       - name: Install dependencies
-        uses: ramsey/composer-install@v4
+        if: steps.vendor-cache.outputs.cache-hit != 'true'
+        run: tools/ci/docker-compose run --rm php composer install --no-interaction --prefer-dist
 
-      - name: Run Composer audit
-        run: composer audit
+      - name: Composer validate
+        run: tools/ci/docker-compose run --rm php composer validate --strict
 
   lint:
-    name: Lint - ${{ matrix.tool.name }}
+    name: Lint (${{ matrix.name }})
+    needs: [validate]
     runs-on: ubuntu-latest
-    needs: security
+    timeout-minutes: 30
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        tool:
+        include:
           - name: Pint
-            command: lint:pint
+            command: composer lint:pint
           - name: PHPCS
-            command: lint:phpcs
+            command: composer lint:phpcs
           - name: PHPStan
-            command: lint:phpstan
+            command: composer lint:phpstan
           - name: PHPMD
-            command: lint:phpmd
+            command: composer lint:phpmd
           - name: PHP-CS-Fixer
-            command: lint:cs
+            command: composer lint:cs
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
-          php-version: ${{ env.PHP_VERSION }}
-          coverage: none
+          persist-credentials: false
+
+      - name: Build PHP image
+        run: tools/ci/docker-compose build php
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v6
+        id: vendor-cache
+        with:
+          path: vendor
+          key: composer-vendor-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            composer-vendor-
 
       - name: Install dependencies
-        uses: ramsey/composer-install@v4
+        if: steps.vendor-cache.outputs.cache-hit != 'true'
+        run: tools/ci/docker-compose run --rm php composer install --no-interaction --prefer-dist
 
-      - name: Run ${{ matrix.tool.name }}
-        run: composer ${{ matrix.tool.command }}
+      - name: Run linter
+        run: tools/ci/docker-compose run --rm php ${{ matrix.command }}
 
-  tests-matrix:
-    name: Tests & Coverage (Laravel ${{ matrix.laravel }})
+  security:
+    name: Security (${{ matrix.name }})
+    needs: [lint]
     runs-on: ubuntu-latest
-    needs: lint
+    timeout-minutes: 30
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        laravel: ['12', '13']
         include:
-          - laravel: '12'
+          - name: Dependencies
+          - name: Secrets
+          - name: SAST
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build PHP image
+        if: matrix.name == 'Dependencies'
+        run: tools/ci/docker-compose build php
+
+      - name: Cache Composer vendor
+        if: matrix.name == 'Dependencies'
+        uses: actions/cache@v6
+        id: vendor-cache
+        with:
+          path: vendor
+          key: composer-vendor-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            composer-vendor-
+
+      - name: Install dependencies
+        if: matrix.name == 'Dependencies' && steps.vendor-cache.outputs.cache-hit != 'true'
+        run: tools/ci/docker-compose run --rm php composer install --no-interaction --prefer-dist
+
+      - name: Composer audit
+        if: matrix.name == 'Dependencies'
+        run: tools/ci/docker-compose run --rm php composer audit
+
+      - name: OSV Scanner
+        if: matrix.name == 'Dependencies'
+        uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
+        with:
+          scan-args: |-
+            --recursive
+            .
+
+      - name: Dependency Review
+        if: matrix.name == 'Dependencies'
+        uses: actions/dependency-review-action@v5
+
+      - name: Gitleaks OSS CLI
+        if: matrix.name == 'Secrets'
+        run: |
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/repo:ro" \
+            --workdir /repo \
+            ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb \
+            detect --source . --redact --exit-code 1
+
+      - name: Semgrep (OSS)
+        if: matrix.name == 'SAST'
+        run: |
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/src:ro" \
+            semgrep/semgrep@sha256:67319956da3dcb58baf5b322899c15458e3963e7018a86aeeb5cd224e69cb77a \
+            semgrep scan --config p/php --error
+
+  test:
+    name: Test (${{ matrix.name }})
+    needs: [lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Laravel 12
+            laravel: '12'
             testbench: '^10.0'
             coverage: true
-          - laravel: '13'
+          - name: Laravel 13
+            laravel: '13'
             testbench: '^11.0'
             coverage: false
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
-          php-version: ${{ env.PHP_VERSION }}
-          coverage: ${{ matrix.coverage && 'pcov' || 'none' }}
+          persist-credentials: false
+
+      - name: Build PHP image
+        run: tools/ci/docker-compose build php
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v6
+        id: vendor-cache
+        with:
+          path: vendor
+          key: composer-vendor-laravel${{ matrix.laravel }}-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            composer-vendor-laravel${{ matrix.laravel }}-
+            composer-vendor-
 
       - name: Install dependencies
-        uses: ramsey/composer-install@v4
-
-      - name: Require Laravel ${{ matrix.laravel }}
         run: |
-          composer require --no-update \
+          tools/ci/docker-compose run --rm php composer install --no-interaction --prefer-dist
+          tools/ci/docker-compose run --rm php composer require --no-update \
             "illuminate/console:^${{ matrix.laravel }}.0" \
             "illuminate/http:^${{ matrix.laravel }}.0" \
             "illuminate/routing:^${{ matrix.laravel }}.0" \
             "illuminate/support:^${{ matrix.laravel }}.0"
-          composer require --no-update --dev "orchestra/testbench:${{ matrix.testbench }}"
-          composer update --prefer-dist --no-interaction
+          tools/ci/docker-compose run --rm php composer require --no-update --dev \
+            "orchestra/testbench:${{ matrix.testbench }}"
+          tools/ci/docker-compose run --rm php composer update --prefer-dist --no-interaction
 
       - name: Run tests with coverage
         if: matrix.coverage
-        run: composer test:coverage
+        run: |
+          mkdir -p build/coverage
+          tools/ci/docker-compose run --rm php ./vendor/bin/phpunit \
+            --coverage-clover=build/coverage/clover-Laravel${{ matrix.laravel }}.xml
 
       - name: Run tests
         if: ${{ !matrix.coverage }}
-        run: composer test -- --no-coverage
+        run: tools/ci/docker-compose run --rm php ./vendor/bin/phpunit --no-coverage
 
-      - name: Upload coverage artifacts
+      - name: Upload coverage artifact
         if: matrix.coverage
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-report
-          path: |
-            build/coverage
-            build/coverage.xml
-          retention-days: 14
+          name: coverage-Laravel${{ matrix.laravel }}
+          path: build/coverage/clover-Laravel${{ matrix.laravel }}.xml
+          if-no-files-found: error
 
-      - name: Upload coverage to Codecov
-        if: matrix.coverage && env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@v6
-        with:
-          token: ${{ env.CODECOV_TOKEN }}
-          files: ./build/coverage.xml
-
-  tests:
-    name: Tests & Coverage
+  coverage:
+    name: Coverage upload
+    needs: [test, security]
     runs-on: ubuntu-latest
-    needs: [tests-matrix]
-    if: always()
+    timeout-minutes: 20
     steps:
-      - name: Check matrix result
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build PHP image
+        run: tools/ci/docker-compose build php
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          path: build/coverage/matrix
+          merge-multiple: true
+
+      - name: Enforce coverage and prepare Clover report
         run: |
-          if [ "${{ needs.tests-matrix.result }}" != "success" ]; then
-            echo "::error::Tests & Coverage matrix did not succeed"
+          tools/ci/docker-compose run --rm php php tools/coverage-enforce.php build/coverage/matrix/clover-Laravel12.xml
+          mkdir -p build/coverage
+          cp build/coverage/matrix/clover-Laravel12.xml build/coverage/clover-combined.xml
+          ls -la build/coverage
+
+      - name: Upload to Codecov
+        if: github.event.pull_request.user.type != 'Bot'
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/coverage/clover-combined.xml
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: Resolve SonarQube host URL
+        if: github.event.pull_request.user.type != 'Bot'
+        id: sonar-config
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          set -euo pipefail
+          host_url="${SONAR_HOST_URL:-https://sonarcloud.io}"
+          host_url="${host_url%/}"
+          case "${host_url}" in
+            http://*|https://*) ;;
+            *) host_url="https://${host_url}" ;;
+          esac
+          if [[ ! "${host_url}" =~ ^https?://[^[:space:]/]+ ]]; then
+            echo "SONAR_HOST_URL must be a valid HTTP(S) URL"
             exit 1
           fi
+          echo "host_url=${host_url}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload SonarQube analysis
+        if: github.event.pull_request.user.type != 'Bot'
+        uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ steps.sonar-config.outputs.host_url }}
+        with:
+          args: >
+            -Dsonar.php.coverage.reportPaths=build/coverage/clover-combined.xml

@@ -1,11 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JOOservices\LaravelController\Providers;
 
-use Illuminate\Support\Facades\Route;
+use BadMethodCallException;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use JOOservices\LaravelController\Console\Commands\LaravelControllerDoctorCommand;
+use LogicException;
+use RuntimeException;
+use Symfony\Component\Finder\Exception\DirectoryNotFoundException;
 use Symfony\Component\Finder\Finder;
 
 class LaravelControllerServiceProvider extends ServiceProvider
@@ -13,7 +19,11 @@ class LaravelControllerServiceProvider extends ServiceProvider
     /**
      * Bootstrap services.
      *
-     * @SuppressWarnings("PHPMD.StaticAccess")
+     * @throws BadMethodCallException
+     * @throws BindingResolutionException
+     * @throws DirectoryNotFoundException
+     * @throws LogicException
+     * @throws RuntimeException
      */
     public function boot(): void
     {
@@ -26,11 +36,14 @@ class LaravelControllerServiceProvider extends ServiceProvider
             __DIR__ . '/../../resources/lang' => lang_path('vendor/laravel-controller'),
         ], 'laravel-controller-lang');
 
+        /** @var Router $router */
+        $router = $this->app->make(Router::class);
+
         // Load Package Routes (if enabled)
         if (config('laravel-controller.routes.enabled', true) === true) {
             $prefix = config('laravel-controller.routes.prefix', 'api/v1');
 
-            Route::group([
+            $router->group([
                 'prefix' => $prefix,
                 'middleware' => 'api',
             ], function () {
@@ -39,7 +52,7 @@ class LaravelControllerServiceProvider extends ServiceProvider
         }
 
         if (config('laravel-controller.routes.auto_map_host_routes', true) === true) {
-            $this->mapApiRoutes();
+            $this->mapApiRoutes($router);
         }
 
         if ($this->app->runningInConsole()) {
@@ -56,16 +69,19 @@ class LaravelControllerServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(
             __DIR__ . '/../config/laravel-controller.php',
-            'laravel-controller'
+            'laravel-controller',
         );
     }
 
     /**
      * Map API routes automatically based on version files.
      *
-     * @SuppressWarnings("PHPMD.StaticAccess")
+     * @throws BadMethodCallException
+     * @throws DirectoryNotFoundException
+     * @throws LogicException
+     * @throws RuntimeException
      */
-    protected function mapApiRoutes(): void
+    protected function mapApiRoutes(Router $router): void
     {
         // We look for routes in the HOST app's "routes/api" directory
         $routePath = base_path('routes/api');
@@ -79,16 +95,22 @@ class LaravelControllerServiceProvider extends ServiceProvider
 
         foreach ($finder as $file) {
             $version = $file->getBasename('.php'); // e.g., "v1"
-            $namespaceVersion = Str::upper($version); // e.g., "V1"
+            $namespaceVersion = strtoupper($version); // e.g., "V1"
 
             // We assume the User's controllers are in App\Http\Controllers\Api\{V1}
             // This is the variable part. The base App namespace could be configured, but 'App' is standard.
             $controllerNamespace = "App\\Http\\Controllers\\Api\\{$namespaceVersion}";
 
-            Route::prefix('api/' . $version)
-                ->middleware('api')
-                ->namespace($controllerNamespace)
-                ->group($file->getRealPath());
+            $path = $file->getRealPath();
+            if ($path === false) {
+                continue;
+            }
+
+            $router->group([
+                'prefix' => 'api/' . $version,
+                'middleware' => 'api',
+                'namespace' => $controllerNamespace,
+            ], $path);
         }
     }
 }

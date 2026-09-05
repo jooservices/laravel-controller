@@ -1,45 +1,54 @@
 <?php
 
-namespace Tests\Feature;
+declare(strict_types=1);
+
+namespace JOOservices\LaravelController\Tests\Feature;
 
 use Illuminate\Pagination\LengthAwarePaginator;
-use JOOservices\LaravelController\Traits\HasApiResponses;
-use Tests\TestCase;
+use JOOservices\LaravelController\Tests\Support\ApiResponsesDouble;
+use JOOservices\LaravelController\Tests\TestCase;
+use UnexpectedValueException;
 
-class HelpersTest extends TestCase
+final class HelpersTest extends TestCase
 {
-    public function testTooManyRequestsReturns429()
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testTooManyRequestsReturns429(): void
     {
-        $controller = new class()
-        {
-            use HasApiResponses;
-        };
+        $controller = new ApiResponsesDouble();
 
         $response = $controller->tooManyRequests('Slow down', 120);
 
-        $this->assertEquals(429, $response->getStatusCode());
-        $this->assertEquals('120', $response->headers->get('Retry-After'));
+        self::assertSame(429, $response->getStatusCode());
+        self::assertSame('120', $response->headers->get('Retry-After'));
 
-        $data = $response->getData(true);
-        $this->assertEquals('Slow down', $data['message']);
+        $data = $this->jsonPayload($response);
+        self::assertSame('Slow down', $data['message']);
     }
 
-    public function testRespondWithPaginationFormatsCorrectly()
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testRespondWithPaginationFormatsCorrectly(): void
     {
-        $controller = new class()
-        {
-            use HasApiResponses;
-        };
+        $controller = new ApiResponsesDouble();
 
         $items = collect(['a', 'b', 'c']);
         $paginator = new LengthAwarePaginator($items, 10, 5, 1);
 
         $response = $controller->respondWithPagination($paginator);
-        $data = $response->getData(true);
+        $data = $this->jsonPayload($response);
 
-        $this->assertEquals(['a', 'b', 'c'], $data['data']);
-        $this->assertArrayHasKey('meta', $data);
-        $this->assertEquals(1, $data['meta']['pagination']['current_page']);
-        $this->assertEquals(10, $data['meta']['pagination']['total']);
+        self::assertSame(['a', 'b', 'c'], $data['data']);
+        self::assertArrayHasKey('meta', $data);
+        self::assertIsArray($data['meta']);
+        /** @var array<string, mixed> $meta */
+        $meta = $data['meta'];
+        self::assertIsArray($meta['pagination']);
+        /** @var array<string, mixed> $pagination */
+        $pagination = $meta['pagination'];
+        self::assertSame(1, $pagination['current_page']);
+        self::assertSame(10, $pagination['total']);
     }
 }

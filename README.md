@@ -11,7 +11,7 @@
 
 Composer package: `jooservices/laravel-controller`
 
-Current release: `1.3.0`
+Current release: `1.4.1`
 
 ## Features
 

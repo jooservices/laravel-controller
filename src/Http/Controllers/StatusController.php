@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JOOservices\LaravelController\Http\Controllers;
 
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -7,7 +9,10 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Psr\SimpleCache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
+use RuntimeException;
 use Throwable;
+use UnexpectedValueException;
 
 class StatusController extends BaseApiController
 {
@@ -15,6 +20,8 @@ class StatusController extends BaseApiController
      * Check API Status.
      *
      * Optionally includes version, environment, maintenance flag, and health checks (database, cache, queue).
+     *
+     * @throws UnexpectedValueException
      */
     public function index(): JsonResponse
     {
@@ -79,7 +86,7 @@ class StatusController extends BaseApiController
 
         return array_values(array_filter(
             $checks,
-            static fn (mixed $check): bool => is_string($check) && $check !== ''
+            static fn(mixed $check): bool => is_string($check) && $check !== '',
         ));
     }
 
@@ -138,6 +145,9 @@ class StatusController extends BaseApiController
      * Run a single health check by name.
      *
      * @return array{ok: bool, message?: string}
+     *
+     * @throws RuntimeException
+     * @throws SimpleCacheInvalidArgumentException
      */
     protected function runOneCheck(string $name): array
     {
@@ -151,6 +161,8 @@ class StatusController extends BaseApiController
 
     /**
      * @return array{ok: bool, message?: string}
+     *
+     * @throws RuntimeException
      */
     protected function checkDatabase(): array
     {
@@ -161,6 +173,8 @@ class StatusController extends BaseApiController
 
     /**
      * @return array{ok: bool, message?: string}
+     *
+     * @throws SimpleCacheInvalidArgumentException
      */
     protected function checkCache(): array
     {
@@ -176,6 +190,8 @@ class StatusController extends BaseApiController
 
     /**
      * @return array{ok: bool, message?: string}
+     *
+     * @throws RuntimeException
      */
     protected function checkQueue(): array
     {

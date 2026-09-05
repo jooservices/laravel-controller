@@ -23,11 +23,13 @@ Default envelope shape:
 - `respondWithData()`
 - `respondWithResource()`
 - `respondWithResourceCollection()`
-- `respondWithPagination()`
-- `respondWithError()`
+- `respondWithPagination()` / `respondWithCursorPagination()` / `respondWithOffsetPagination()`
+- `respondWithError()` / `respondWithProblem()` (RFC 7807)
 - `respondNoContent()`
 
-Backward-compatible helpers such as `success()`, `error()`, `respondWithItem()`, `respondWithCollection()`, and `paginated()` remain available.
+Legacy aliases such as `success()`, `error()`, `respondWithItem()`, and `respondWithCollection()` remain available. `paginated()` was removed in v4 — use `respondWithPagination()`.
+
+See [Problem Details](./problem-details.md) and [OpenAPI Contract](./openapi-contract.md).
 
 ## Resource Boundary
 

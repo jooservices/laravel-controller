@@ -1,59 +1,63 @@
 <?php
 
-namespace Tests\Feature;
+declare(strict_types=1);
+
+namespace JOOservices\LaravelController\Tests\Feature;
 
 use App\Support\TestingResponseFormatter;
-use JOOservices\LaravelController\Traits\HasApiResponses;
-use Tests\TestCase;
+use JOOservices\LaravelController\Tests\Support\ApiResponsesDouble;
+use JOOservices\LaravelController\Tests\TestCase;
+use UnexpectedValueException;
 
-class ConfigurationTest extends TestCase
+final class ConfigurationTest extends TestCase
 {
-    public function testItUsesConfiguredKeysForResponse()
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItUsesConfiguredKeysForResponse(): void
     {
-        // Mock a class using the trait
-        $controller = new class()
-        {
-            use HasApiResponses;
-        };
+        $controller = new ApiResponsesDouble();
 
-        // Override config
         config(['laravel-controller.keys.success' => 'status']);
         config(['laravel-controller.keys.message' => 'msg']);
 
         $response = $controller->success(['foo' => 'bar']);
-        $data = $response->getData(true);
+        $data = $this->jsonPayload($response);
 
-        $this->assertArrayHasKey('status', $data);
-        $this->assertArrayHasKey('msg', $data);
-        $this->assertArrayNotHasKey('success', $data);
-        $this->assertTrue($data['status']);
+        self::assertArrayHasKey('status', $data);
+        self::assertArrayHasKey('msg', $data);
+        self::assertArrayNotHasKey('success', $data);
+        self::assertTrue($data['status']);
     }
 
-    public function testItUsesCustomResponseFormatterWhenConfigured()
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItUsesCustomResponseFormatterWhenConfigured(): void
     {
-        $controller = new class()
-        {
-            use HasApiResponses;
-        };
+        $controller = new ApiResponsesDouble();
 
         config(['laravel-controller.response_formatter' => TestingResponseFormatter::class]);
 
         $response = $controller->success(['foo' => 'bar'], 'Ok', 200, ['page' => 1], ['deprecated']);
-        $data = $response->getData(true);
+        $data = $this->jsonPayload($response);
 
-        $this->assertTrue($data['ok']);
-        $this->assertSame(200, $data['status']);
-        $this->assertSame('Ok', $data['message']);
-        $this->assertSame(['foo' => 'bar'], $data['result']);
-        $this->assertNull($data['issues']);
-        $this->assertSame(['page' => 1], $data['diagnostics']['meta']);
-        $this->assertSame(['deprecated'], $data['diagnostics']['warnings']);
-        $this->assertNotEmpty($data['diagnostics']['request_id']);
-        $this->assertArrayNotHasKey('success', $data);
+        self::assertTrue($data['ok']);
+        self::assertSame(200, $data['status']);
+        self::assertSame('Ok', $data['message']);
+        self::assertSame(['foo' => 'bar'], $data['result']);
+        self::assertNull($data['issues']);
+        self::assertIsArray($data['diagnostics']);
+        /** @var array<string, mixed> $diagnostics */
+        $diagnostics = $data['diagnostics'];
+        self::assertSame(['page' => 1], $diagnostics['meta']);
+        self::assertSame(['deprecated'], $diagnostics['warnings']);
+        self::assertNotEmpty($diagnostics['request_id']);
+        self::assertArrayNotHasKey('success', $data);
     }
 
-    public function testDefaultConfigurationIncludesHostRouteAutoMappingSwitch()
+    public function testDefaultConfigurationIncludesHostRouteAutoMappingSwitch(): void
     {
-        $this->assertTrue(config('laravel-controller.routes.auto_map_host_routes'));
+        self::assertTrue((bool) config('laravel-controller.routes.auto_map_host_routes'));
     }
 }

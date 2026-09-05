@@ -1,35 +1,40 @@
 <?php
 
-namespace Tests\Unit;
+declare(strict_types=1);
 
-use Illuminate\Support\Facades\Route;
+namespace JOOservices\LaravelController\Tests\Unit;
+
+use Illuminate\Foundation\Application;
 use JOOservices\LaravelController\Providers\LaravelControllerServiceProvider;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
-class ProviderTest extends OrchestraTestCase
+final class ProviderTest extends OrchestraTestCase
 {
-    protected function getPackageProviders($app)
+    /**
+     * @param  Application  $app
+     * @return array<int, class-string>
+     */
+    protected function getPackageProviders($app): array
     {
         return [
             LaravelControllerServiceProvider::class,
         ];
     }
 
-    protected function defineEnvironment($app)
+    /**
+     * @param  Application  $app
+     */
+    protected function defineEnvironment($app): void
     {
         // Point base path to a directory that definitely does NOT have routes/api
-        // sys_get_temp_dir() usually doesn't have it.
         $app->setBasePath(sys_get_temp_dir());
     }
 
-    public function testBootDoesNothingWhenRoutesDirectoryIsMissing()
+    public function testBootDoesNothingWhenRoutesDirectoryIsMissing(): void
     {
-        // The provider boots in setUp.
-        // If logic works, it checks dir, finds missing, returns.
-        // No exceptions thrown.
-        // No routes registered (we can check route list, but difficult to assert "nothing from us").
-        // But simply executing it covers the line.
-
-        $this->assertTrue(true);
+        // Provider boots in setUp; missing routes/api must not throw.
+        self::assertFalse(is_dir(base_path('routes/api')));
+        self::assertNotNull($this->app);
+        self::assertTrue($this->app->bound('config'));
     }
 }

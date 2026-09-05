@@ -17,10 +17,26 @@
 ],
 ```
 
-## 204 Envelope Support
+## Success Code Allowlist
 
 ```php
-'envelope_204' => true,
+// null (default): any HTTP 2xx sets success: true
+// explicit list: only listed codes are treated as success
+'success_codes' => [200, 201],
+```
+
+## Problem Details Profile
+
+```php
+'response_profile' => 'problem+json',
+```
+
+## Meta Header Echo
+
+```php
+'meta_headers' => [
+    'enabled' => true,
+],
 ```
 
 ## Custom Response Formatter
@@ -45,6 +61,14 @@ final class ApiResponseFormatter implements ResponseFormatter
         ];
     }
 }
+```
+
+## Pluggable Status Health Check
+
+```php
+'status' => [
+    'checks' => ['database', App\Health\RedisCheck::class],
+],
 ```
 
 ## DTO Or Data Object Input

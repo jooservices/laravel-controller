@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "bmewburn.vscode-intelephense-client",
+    "open-southeners.laravel-pint",
+    "ikappas.phpcs",
+    "recca0120.vscode-phpunit",
+    "swordev.phpstan",
+    "ecodes.vscode-phpmd",
+    "editorconfig.editorconfig"
+  ]
+}

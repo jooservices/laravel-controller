@@ -8,6 +8,14 @@ php artisan vendor:publish --provider="JOOservices\LaravelController\Providers\L
 
 Important options:
 
+## Response Profile
+
+```php
+'response_profile' => 'envelope', // or 'problem+json'
+```
+
+With `problem+json`, error responses use RFC 7807 and `application/problem+json`. Success responses keep the default envelope. An explicit `response_formatter` still wins when set.
+
 ## Response Keys
 
 Override top-level keys if your frontend expects a different envelope schema.
@@ -18,6 +26,23 @@ Override top-level keys if your frontend expects a different envelope schema.
     'trace_id' => 'trace_id',
 ],
 ```
+
+## Meta Headers (echo only)
+
+```php
+'meta_headers' => [
+    'enabled' => true,
+    'idempotency' => 'Idempotency-Key',
+    'rate_limit' => [
+        'limit' => 'X-RateLimit-Limit',
+        'remaining' => 'X-RateLimit-Remaining',
+        'reset' => 'X-RateLimit-Reset',
+    ],
+    'retry_after' => 'Retry-After',
+],
+```
+
+Present request headers are copied into `meta` (`idempotency_key`, `rate_limit`, `retry_after`). The package does **not** store idempotency keys or enforce rate limits.
 
 ## Trace ID
 
@@ -44,7 +69,7 @@ The class must implement `JOOservices\LaravelController\Contracts\ResponseFormat
     'include_version' => true,
     'include_environment' => true,
     'include_maintenance' => true,
-    'checks' => ['database', 'cache', 'queue'],
+    'checks' => ['database', 'cache', 'queue'], // and/or StatusHealthCheck class-strings
     'checks_timeout_seconds' => 5,
 ],
 ```

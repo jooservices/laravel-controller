@@ -1,16 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JOOservices\LaravelController\Traits;
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
+use UnexpectedValueException;
 
 trait HandlesApiExceptions
 {
@@ -18,33 +21,88 @@ trait HandlesApiExceptions
 
     /**
      * Render an exception into an API response.
+     *
+     * @throws UnexpectedValueException
      */
     public function renderApiException(Throwable $exception): JsonResponse
     {
-        if ($exception instanceof ValidationException) {
-            $message = $this->validationExceptionMessage($exception);
+        return match (true) {
+            $exception instanceof ValidationException => $this->renderValidationException($exception),
+            $exception instanceof ModelNotFoundException => $this->renderModelNotFoundException($exception),
+            $exception instanceof NotFoundHttpException => $this->renderNotFoundHttpException($exception),
+            $exception instanceof AuthenticationException => $this->unauthorized($exception->getMessage()),
+            $exception instanceof AuthorizationException => $this->renderAuthorizationException($exception),
+            $exception instanceof HttpException => $this->renderHttpException($exception),
+            default => $this->renderUnhandledException($exception),
+        };
+    }
 
-            return $this->unprocessable($message, $exception->errors());
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderValidationException(ValidationException $exception): JsonResponse
+    {
+        return $this->unprocessable(
+            $this->validationExceptionMessage($exception),
+            $exception->errors(),
+        );
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderModelNotFoundException(Throwable $exception): JsonResponse
+    {
+        report($exception);
+
+        return $this->notFound('Resource not found');
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderNotFoundHttpException(NotFoundHttpException $exception): JsonResponse
+    {
+        $message = $exception->getMessage();
+
+        return $this->notFound($message !== '' ? $message : 'Resource not found');
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderAuthorizationException(AuthorizationException $exception): JsonResponse
+    {
+        $status = $exception->status() ?? Response::HTTP_FORBIDDEN;
+        $message = $exception->getMessage();
+
+        if ($message === '') {
+            $message = $status === Response::HTTP_NOT_FOUND
+                ? self::MESSAGE_NOT_FOUND
+                : 'Forbidden';
         }
 
-        if ($exception instanceof ModelNotFoundException || $exception instanceof NotFoundHttpException) {
-            return $this->notFound($exception->getMessage() ?: 'Resource not found');
-        }
+        return $this->error($message, $status);
+    }
 
-        if ($exception instanceof AuthenticationException) {
-            return $this->unauthorized($exception->getMessage());
-        }
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderHttpException(HttpException $exception): JsonResponse
+    {
+        return $this->error($exception->getMessage(), $exception->getStatusCode())
+            ->withHeaders($exception->getHeaders());
+    }
 
-        if ($exception instanceof AuthorizationException) {
-            return $this->forbidden($exception->getMessage());
-        }
-
-        if ($exception instanceof HttpException) {
-            return $this->error($exception->getMessage(), $exception->getStatusCode());
-        }
+    /**
+     * @throws UnexpectedValueException
+     */
+    protected function renderUnhandledException(Throwable $exception): JsonResponse
+    {
+        $debug = config('app.debug');
 
         return $this->internalError(
-            config('app.debug') ? $exception->getMessage() : 'Server Error'
+            $debug === true ? $exception->getMessage() : 'Server Error',
         );
     }
 
@@ -61,7 +119,13 @@ trait HandlesApiExceptions
             $errors = $exception->errors();
             $first = reset($errors);
 
-            return is_array($first) ? (string) reset($first) : (string) $first;
+            if (! is_array($first)) {
+                return is_string($first) ? $first : 'Unprocessable Entity';
+            }
+
+            $firstMessage = reset($first);
+
+            return is_string($firstMessage) ? $firstMessage : 'Unprocessable Entity';
         }
 
         return $configMessage;

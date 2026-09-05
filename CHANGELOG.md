@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-09-05
+
+### Added
+
+- RFC 7807 Problem Details via `response_profile` (`problem+json`) and `respondWithProblem()`.
+- `ProblemDetailsFormatter` and OpenAPI 3.1 schemas in `resources/openapi/envelope.v4.yaml` (`EnvelopeContract`).
+- Echo of Idempotency-Key, rate-limit, and Retry-After request headers into envelope `meta` (`meta_headers` config; echo only).
+- Pluggable status health checks via `StatusHealthCheck` class-strings alongside built-in `database` / `cache` / `queue`.
+- Upgrade guide: [UPGRADE-4.0.md](UPGRADE-4.0.md).
+
+### Changed
+
+- Cursor and offset pagination metadata nested under `meta.pagination` (parity with length-aware pagination).
+- Iterable `respondWithCursorPagination()` derives `has_more` from a non-null `next_cursor` (removed `$hasMore` argument).
+- Invalid or missing API Resource classes throw `UnexpectedValueException` instead of falling back to raw payloads.
+- `ResourceCollection` payloads respect `JsonResource::withoutWrapping()`.
+- Default `success` envelope flag is true only for HTTP 2xx unless `success_codes` is set.
+- Status readiness checks return HTTP 503 when any configured check fails; probes live in `StatusHealthChecker`.
+- Repository scaffold aligned with JOOservices package standards (Docker PHP 8.5, Pint `per`, full lint gate).
+
+### Removed
+
+- Deprecated `paginated()` helper — use `respondWithPagination()`.
+- `envelope_204` config — `noContent()` always returns an empty 204 body (RFC 9110).
+
+### Fixed
+
+- `AuthorizationException::asNotFound()` preserves HTTP 404 instead of forcing 403.
+- `HttpException` response headers (for example `Retry-After`) are preserved.
+- `ModelNotFoundException` returns a public `Resource not found` message; details go to the exception reporter.
+
 ## [1.4.0] - 2026-06-25
 
 ### Added

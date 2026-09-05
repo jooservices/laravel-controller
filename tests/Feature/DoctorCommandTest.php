@@ -1,80 +1,191 @@
 <?php
 
-namespace Tests\Feature;
+declare(strict_types=1);
+
+namespace JOOservices\LaravelController\Tests\Feature;
 
 use App\Support\TestingResponseFormatter;
 use Illuminate\Support\Facades\Artisan;
-use Tests\TestCase;
+use Illuminate\Testing\PendingCommand;
+use JOOservices\LaravelController\Tests\Support\UnresolvableResponseFormatter;
+use JOOservices\LaravelController\Tests\TestCase;
+use RuntimeException;
+use stdClass;
 
-class DoctorCommandTest extends TestCase
+final class DoctorCommandTest extends TestCase
 {
-    public function testDoctorCommandPassesWithDefaultConfiguration()
+    public function testDoctorCommandPassesWithDefaultConfiguration(): void
     {
-        $this->artisan('laravel-controller:doctor')
-            ->expectsOutputToContain('JOOservices Laravel Controller doctor')
+        $command = $this->artisan('laravel-controller:doctor');
+        self::assertInstanceOf(PendingCommand::class, $command);
+        $command->expectsOutputToContain('JOOservices Laravel Controller doctor')
             ->assertSuccessful();
     }
 
-    public function testDoctorCommandOutputsJson()
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandOutputsJson(): void
     {
         $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
         $output = Artisan::output();
 
-        $this->assertSame(0, $exitCode);
-        $this->assertStringContainsString('"ok": true', $output);
-        $this->assertStringContainsString('"name": "config"', $output);
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString('"ok": true', $output);
+        self::assertStringContainsString('"name": "config"', $output);
     }
 
-    public function testDoctorCommandDetectsInvalidFormatter()
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandDetectsInvalidFormatter(): void
     {
-        config(['laravel-controller.response_formatter' => \stdClass::class]);
+        config(['laravel-controller.response_formatter' => stdClass::class]);
 
         $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
         $output = Artisan::output();
 
-        $this->assertSame(1, $exitCode);
-        $this->assertStringContainsString('does not implement ResponseFormatter', $output);
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('does not implement ResponseFormatter', $output);
     }
 
-    public function testDoctorCommandAcceptsConfiguredFormatter()
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandAcceptsConfiguredFormatter(): void
     {
         config(['laravel-controller.response_formatter' => TestingResponseFormatter::class]);
 
         $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
         $output = Artisan::output();
 
-        $this->assertSame(0, $exitCode);
-        $this->assertStringContainsString('resolves and implements ResponseFormatter', $output);
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString('resolves and implements ResponseFormatter', $output);
     }
 
-    public function testDoctorCommandAcceptsDigitStringStatusTimeout()
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandAcceptsDigitStringStatusTimeout(): void
     {
         config(['laravel-controller.status.checks_timeout_seconds' => '5']);
 
         $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
 
-        $this->assertSame(0, $exitCode);
+        self::assertSame(0, $exitCode);
     }
 
-    public function testDoctorCommandRejectsInvalidStatusTimeout()
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandRejectsInvalidStatusTimeout(): void
     {
         config(['laravel-controller.status.checks_timeout_seconds' => 'soon']);
 
         $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
         $output = Artisan::output();
 
-        $this->assertSame(1, $exitCode);
-        $this->assertStringContainsString('integer or digit string', $output);
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('integer or digit string', $output);
     }
 
-    public function testDoctorCommandRejectsInvalidTraceHeader()
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandRejectsInvalidTraceHeader(): void
     {
         config(['laravel-controller.trace_id.header' => '']);
 
         $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
         $output = Artisan::output();
 
-        $this->assertSame(1, $exitCode);
-        $this->assertStringContainsString('must be a non-empty string', $output);
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('must be a non-empty string', $output);
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandDetectsMissingFormatterClass(): void
+    {
+        config(['laravel-controller.response_formatter' => 'App\\Missing\\DoesNotExist']);
+
+        $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
+        $output = Artisan::output();
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('configured formatter class does not exist', $output);
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandDetectsUnresolvableFormatter(): void
+    {
+        config([
+            'laravel-controller.response_formatter' => UnresolvableResponseFormatter::class,
+        ]);
+
+        $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
+        $output = Artisan::output();
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('configured formatter cannot be resolved', $output);
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandRejectsNonArrayStatusConfig(): void
+    {
+        config(['laravel-controller.status' => 'bad']);
+
+        $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
+        $output = Artisan::output();
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('status config must be an array', $output);
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandRejectsNonArrayEnvelopeKeys(): void
+    {
+        config(['laravel-controller.keys' => 'bad']);
+
+        $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
+        $output = Artisan::output();
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('keys config must be an array', $output);
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function testDoctorCommandReportsMissingEnvelopeKeys(): void
+    {
+        config([
+            'laravel-controller.keys' => [
+                'success' => 'success',
+                'code' => 'code',
+            ],
+        ]);
+
+        $exitCode = Artisan::call('laravel-controller:doctor', ['--json' => true]);
+        $output = Artisan::output();
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('missing:', $output);
+    }
+
+    public function testDoctorCommandHumanOutputShowsErrorsForFailures(): void
+    {
+        config(['laravel-controller.trace_id.header' => '']);
+
+        $command = $this->artisan('laravel-controller:doctor');
+        self::assertInstanceOf(PendingCommand::class, $command);
+        $command->assertFailed();
     }
 }

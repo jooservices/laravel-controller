@@ -18,9 +18,10 @@ Laravel Resources remain the official presentation transformer for payload data.
 This package is:
 
 - base API controller helpers
-- standard response envelope helpers
+- standard response envelope helpers (and optional RFC 7807 Problem Details)
+- OpenAPI envelope schema artifact (`resources/openapi/envelope.v4.yaml`)
 - pagination and status response helpers
-- formatter contract
+- formatter contract and pluggable status health checks
 - optional exception response helper
 
 This package is not:
@@ -31,6 +32,7 @@ This package is not:
 - validation package
 - full application exception-handler framework
 - JSON:API full implementation
+- idempotency store or rate-limit enforcer
 - business logic layer
 
 ## JOOservices Ecosystem Fit

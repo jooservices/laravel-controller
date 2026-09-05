@@ -1,20 +1,14 @@
 <?php
 
-namespace Tests\Feature;
+declare(strict_types=1);
 
-use Tests\TestCase;
+namespace JOOservices\LaravelController\Tests\Feature;
 
-class VersioningTest extends TestCase
+use JOOservices\LaravelController\Tests\TestCase;
+
+final class VersioningTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-        // Since testbench might not auto-load routes from our custom path during setUp of provider easily
-        // without configuring package path, we might need to rely on the Provider logic working
-        // if base_path is correct.
-    }
-
-    public function testV1StatusRouteWorks()
+    public function testV1StatusRouteWorks(): void
     {
         $response = $this->getJson('/api/v1/status');
 
@@ -33,10 +27,10 @@ class VersioningTest extends TestCase
                 ],
             ]);
 
-        $this->assertNotNull($response->json('trace_id'), 'Trace ID should be present');
+        self::assertNotNull($response->json('trace_id'), 'Trace ID should be present');
     }
 
-    public function testStatusEndpointCanIncludeVersionEnvironmentAndMaintenance()
+    public function testStatusEndpointCanIncludeVersionEnvironmentAndMaintenance(): void
     {
         config([
             'laravel-controller.status.include_version' => true,
@@ -49,9 +43,11 @@ class VersioningTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('data.status', 'ok')
             ->assertJsonPath('data.message', 'API is running');
+
         $data = $response->json('data');
-        $this->assertArrayHasKey('version', $data);
-        $this->assertArrayHasKey('environment', $data);
-        $this->assertArrayHasKey('maintenance', $data);
+        self::assertIsArray($data);
+        self::assertArrayHasKey('version', $data);
+        self::assertArrayHasKey('environment', $data);
+        self::assertArrayHasKey('maintenance', $data);
     }
 }

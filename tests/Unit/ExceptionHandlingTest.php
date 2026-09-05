@@ -52,6 +52,27 @@ final class ExceptionHandlingTest extends TestCase
     /**
      * @throws UnexpectedValueException
      */
+    public function testItHandlesModelNotFoundWrappedInNotFoundHttpException(): void
+    {
+        config(['app.debug' => false]);
+        $handler = new ApiExceptionHandlerDouble();
+
+        $modelNotFound = new ModelNotFoundException();
+        $modelNotFound->setModel(UserModelStub::class, [42]);
+        $exception = new NotFoundHttpException($modelNotFound->getMessage(), $modelNotFound);
+
+        $response = $handler->renderApiException($exception);
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(404, $response->getStatusCode());
+        self::assertSame('Resource not found', $data['message']);
+        self::assertStringNotContainsString(UserModelStub::class, $data['message']);
+        self::assertStringNotContainsString('42', $data['message']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
     public function testItHandlesValidationException(): void
     {
         $handler = new ApiExceptionHandlerDouble();

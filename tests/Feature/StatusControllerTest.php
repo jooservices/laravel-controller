@@ -34,9 +34,23 @@ final class StatusControllerTest extends TestCase
             'laravel-controller.status.include_version' => true,
         ]);
 
+        $stored = null;
         $cache = Mockery::mock(CacheRepository::class);
-        $cache->shouldReceive('put')->once()->with('laravel_controller_health', 1, 10)->andReturn(true);
-        $cache->shouldReceive('get')->once()->with('laravel_controller_health')->andReturn(1);
+        $cache->shouldReceive('put')->once()->andReturnUsing(
+            static function (string $key, string $value, int $ttl) use (&$stored): bool {
+                self::assertStringStartsWith('laravel_controller_health_', $key);
+                self::assertSame(10, $ttl);
+                $stored = $value;
+
+                return true;
+            },
+        );
+        $cache->shouldReceive('get')->once()->andReturnUsing(
+            static function () use (&$stored): ?string {
+                return $stored;
+            },
+        );
+        $cache->shouldReceive('forget')->once()->andReturn(true);
         $this->app()->instance(CacheRepository::class, $cache);
 
         $response = $this->getJson('/api/v1/status');
@@ -137,6 +151,53 @@ final class StatusControllerTest extends TestCase
         $cache = Mockery::mock(CacheRepository::class);
         $cache->shouldReceive('put')->once()->andReturn(true);
         $cache->shouldReceive('get')->once()->andReturn(null);
+        $cache->shouldReceive('forget')->once()->andReturn(true);
+        $this->app()->instance(CacheRepository::class, $cache);
+
+        $response = $this->getJson('/api/v1/status');
+
+        $response->assertStatus(503);
+        $checks = $response->json('data.checks');
+        self::assertIsArray($checks);
+        self::assertIsArray($checks['cache']);
+        self::assertFalse($checks['cache']['ok']);
+        self::assertSame('read/write failed', $checks['cache']['message']);
+    }
+
+    public function testStatusCacheWriteFailureIsReported(): void
+    {
+        config([
+            'laravel-controller.status.checks' => ['cache'],
+        ]);
+
+        /** @var MockInterface&CacheRepository $cache */
+        $cache = Mockery::mock(CacheRepository::class);
+        $cache->shouldReceive('put')->once()->andReturn(false);
+        $cache->shouldReceive('get')->never();
+        $cache->shouldReceive('forget')->never();
+        $this->app()->instance(CacheRepository::class, $cache);
+
+        $response = $this->getJson('/api/v1/status');
+
+        $response->assertStatus(503);
+        $checks = $response->json('data.checks');
+        self::assertIsArray($checks);
+        self::assertIsArray($checks['cache']);
+        self::assertFalse($checks['cache']['ok']);
+        self::assertSame('write failed', $checks['cache']['message']);
+    }
+
+    public function testStatusCacheStaleValueIsNotTreatedAsHealthy(): void
+    {
+        config([
+            'laravel-controller.status.checks' => ['cache'],
+        ]);
+
+        /** @var MockInterface&CacheRepository $cache */
+        $cache = Mockery::mock(CacheRepository::class);
+        $cache->shouldReceive('put')->once()->andReturn(true);
+        $cache->shouldReceive('get')->once()->andReturn(1);
+        $cache->shouldReceive('forget')->once()->andReturn(true);
         $this->app()->instance(CacheRepository::class, $cache);
 
         $response = $this->getJson('/api/v1/status');
@@ -201,7 +262,9 @@ final class StatusControllerTest extends TestCase
         /** @var array<string, array{ok: bool, message?: string}> $results */
         $results = $checker->run(['slow', 'cache'], 1);
 
-        self::assertTrue($results['slow']['ok']);
+        self::assertFalse($results['slow']['ok']);
+        self::assertArrayHasKey('message', $results['slow']);
+        self::assertSame('timeout', $results['slow']['message']);
         self::assertFalse($results['cache']['ok']);
         self::assertArrayHasKey('message', $results['cache']);
         self::assertSame('timeout', $results['cache']['message']);

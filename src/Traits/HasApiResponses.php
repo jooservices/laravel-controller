@@ -6,6 +6,7 @@ namespace JOOservices\LaravelController\Traits;
 
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\Paginator as PaginatorContract;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -439,30 +440,45 @@ trait HasApiResponses
      */
     protected function resolveResourcePayload(mixed $data, array $meta): array
     {
-        if ($data instanceof ResourceCollection) {
-            /** @var array<string, mixed>|list<mixed> $response */
-            $response = $data->response()->getData(true);
-
-            if ($this->isLaravelResourceEnvelope($response)) {
-                /** @var array<string, mixed> $response */
-                $data = $response['data'];
-                $meta = array_merge($meta, (array) ($response['meta'] ?? []));
-
-                if (isset($response['links']) && is_array($response['links']) && $response['links'] !== []) {
-                    $meta['links'] = $response['links'];
-                }
-
-                return [$data, $this->normalizeStringKeyedArray($meta)];
-            }
-
-            return [$response, $this->normalizeStringKeyedArray($meta)];
-        }
-
         if ($data instanceof JsonResource) {
-            $data = $data->resolve();
+            return $this->extractJsonResourcePayload($data, $meta);
         }
 
         return [$data, $this->normalizeStringKeyedArray($meta)];
+    }
+
+    /**
+     * Preserve Resource wrapping, pagination keys, and additional()/with() metadata.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array{0: mixed, 1: array<string, mixed>}
+     */
+    protected function extractJsonResourcePayload(JsonResource $resource, array $meta): array
+    {
+        /** @var array<string, mixed>|list<mixed> $response */
+        $response = $resource->response()->getData(true);
+
+        if (! $this->isLaravelResourceEnvelope($response)) {
+            return [$response, $this->normalizeStringKeyedArray($meta)];
+        }
+
+        /** @var array<string, mixed> $response */
+        $payload = $response['data'];
+        $meta = array_merge($meta, (array) ($response['meta'] ?? []));
+
+        if (isset($response['links']) && is_array($response['links']) && $response['links'] !== []) {
+            $meta['links'] = $response['links'];
+        }
+
+        foreach ($response as $key => $value) {
+            if (in_array($key, ['data', 'meta', 'links'], true)) {
+                continue;
+            }
+
+            $meta[(string) $key] = $value;
+        }
+
+        return [$payload, $this->normalizeStringKeyedArray($meta)];
     }
 
     /**
@@ -701,7 +717,8 @@ trait HasApiResponses
     }
 
     /**
-     * Return a paginated response. Use with LengthAwarePaginator; optionally pass a resource class to transform items.
+     * Return a paginated response for LengthAwarePaginator, simple Paginator, or CursorPaginator.
+     * Never returns an unrecognized paginator payload as raw data.
      *
      * @param  string|null  $resourceClass
      * @throws UnexpectedValueException
@@ -712,37 +729,128 @@ trait HasApiResponses
         string $message = 'Success',
         int $code = Response::HTTP_OK,
     ): JsonResponse {
+        $this->assertApiResourceClass($resourceClass);
+
         if ($paginator instanceof LengthAwarePaginator) {
-            $items = $paginator->items();
-            $this->assertApiResourceClass($resourceClass);
-
-            if ($resourceClass !== null) {
-                /** @var class-string<JsonResource> $resourceClass */
-                $items = $resourceClass::collection($items);
-            }
-
-            $meta = [
-                'pagination' => [
-                    'current_page' => $paginator->currentPage(),
-                    'total' => $paginator->total(),
-                    'per_page' => $paginator->perPage(),
-                    'last_page' => $paginator->lastPage(),
-                ],
-            ];
-
-            if (config('laravel-controller.pagination_links', true) === true) {
-                $meta['links'] = [
-                    'first' => $paginator->url(1),
-                    'last' => $paginator->url($paginator->lastPage()),
-                    'prev' => $paginator->previousPageUrl(),
-                    'next' => $paginator->nextPageUrl(),
-                ];
-            }
-
-            return $this->success($items, $message, $code, $meta);
+            return $this->respondWithLengthAwarePagination($paginator, $resourceClass, $message, $code);
         }
 
-        return $this->success($paginator, $message, $code);
+        if ($paginator instanceof CursorPaginator) {
+            return $this->respondWithNativeCursorPagination($paginator, $resourceClass, $message, $code);
+        }
+
+        if ($paginator instanceof PaginatorContract) {
+            return $this->respondWithSimplePagination($paginator, $resourceClass, $message, $code);
+        }
+
+        throw new UnexpectedValueException(
+            'respondWithPagination() requires a LengthAwarePaginator, Paginator, or CursorPaginator instance.',
+        );
+    }
+
+    /**
+     * @param  LengthAwarePaginator<array-key, mixed>  $paginator
+     * @param  string|null  $resourceClass
+     * @throws UnexpectedValueException
+     */
+    protected function respondWithLengthAwarePagination(
+        LengthAwarePaginator $paginator,
+        ?string $resourceClass,
+        string $message,
+        int $code,
+    ): JsonResponse {
+        $items = $this->transformPaginatorItems($paginator->items(), $resourceClass);
+
+        $meta = [
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ];
+
+        if (config('laravel-controller.pagination_links', true) === true) {
+            $meta['links'] = [
+                'first' => $paginator->url(1),
+                'last' => $paginator->url($paginator->lastPage()),
+                'prev' => $paginator->previousPageUrl(),
+                'next' => $paginator->nextPageUrl(),
+            ];
+        }
+
+        return $this->success($items, $message, $code, $meta);
+    }
+
+    /**
+     * Support Illuminate simplePaginate() results.
+     *
+     * @param  PaginatorContract<array-key, mixed>  $paginator
+     * @param  string|null  $resourceClass
+     * @throws UnexpectedValueException
+     */
+    protected function respondWithSimplePagination(
+        PaginatorContract $paginator,
+        ?string $resourceClass,
+        string $message,
+        int $code,
+    ): JsonResponse {
+        $items = $this->transformPaginatorItems($paginator->items(), $resourceClass);
+
+        $meta = [
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'has_more' => $paginator->hasMorePages(),
+            ],
+        ];
+
+        if (config('laravel-controller.pagination_links', true) === true) {
+            $meta['links'] = [
+                'prev' => $paginator->previousPageUrl(),
+                'next' => $paginator->nextPageUrl(),
+            ];
+        }
+
+        return $this->success($items, $message, $code, $meta);
+    }
+
+    /**
+     * Support Illuminate cursorPaginate() results via the shared cursor helper (meta.pagination).
+     *
+     * @param  CursorPaginator<int, mixed>  $paginator
+     * @param  string|null  $resourceClass
+     * @throws UnexpectedValueException
+     */
+    protected function respondWithNativeCursorPagination(
+        CursorPaginator $paginator,
+        ?string $resourceClass,
+        string $message,
+        int $code,
+    ): JsonResponse {
+        return $this->respondWithCursorPagination(
+            $paginator,
+            null,
+            null,
+            $resourceClass,
+            $message,
+            $code,
+        );
+    }
+
+    /**
+     * @param  array<mixed>  $items
+     * @param  string|null  $resourceClass
+     * @return array<int, mixed>|ResourceCollection
+     */
+    protected function transformPaginatorItems(array $items, ?string $resourceClass): array | ResourceCollection
+    {
+        if ($resourceClass === null) {
+            return array_values($items);
+        }
+
+        /** @var class-string<JsonResource> $resourceClass */
+        return $resourceClass::collection($items);
     }
 
     /**

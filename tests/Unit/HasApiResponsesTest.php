@@ -237,6 +237,25 @@ final class HasApiResponsesTest extends TestCase
     /**
      * @throws UnexpectedValueException
      */
+    public function testSingleResourceKeepsAdditionalMetadataInMeta(): void
+    {
+        $etag = fake()->sha256();
+        $resource = (new FakeItemResource(['id' => 9, 'name' => 'Ada', 'internal_note' => 'secret']))
+            ->additional(['etag' => $etag]);
+
+        $response = $this->traitObject->respondWithResource($resource);
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(['id' => 9, 'name' => 'Ada'], $data['data']);
+        self::assertIsArray($data['meta']);
+        /** @var array<string, mixed> $meta */
+        $meta = $data['meta'];
+        self::assertSame($etag, $meta['etag']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
     public function testManualTraceId(): void
     {
         $uuid = (string) Str::uuid();

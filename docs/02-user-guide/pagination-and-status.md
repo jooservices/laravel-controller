@@ -9,7 +9,7 @@ Use these helpers when returning resource collections:
 - `respondWithCursorPagination($itemsOrCursorPaginator, …)` — iterable API or Laravel `CursorPaginator`
 - `respondWithOffsetPagination($items, $offset, $limit, $total, ResourceClass::class)`
 
-Unrecognized inputs to `respondWithPagination()` throw `UnexpectedValueException` (v4.0.1+); they are never returned as raw `data`.
+Unrecognized inputs to `respondWithPagination()` throw `UnexpectedValueException`; they are never returned as raw `data`.
 
 All three pagination styles nest fields under **`meta.pagination`** (v4). When `pagination_links` is enabled, HAL-style navigation links are under `meta.links`.
 

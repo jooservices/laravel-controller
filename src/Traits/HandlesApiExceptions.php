@@ -63,9 +63,24 @@ trait HandlesApiExceptions
      */
     protected function renderNotFoundHttpException(NotFoundHttpException $exception): JsonResponse
     {
+        $previous = $exception->getPrevious();
+        if ($previous instanceof ModelNotFoundException) {
+            return $this->renderModelNotFoundException($previous);
+        }
+
         $message = $exception->getMessage();
+        if ($this->isModelNotFoundMessage($message)) {
+            report($exception);
+
+            return $this->notFound('Resource not found');
+        }
 
         return $this->notFound($message !== '' ? $message : 'Resource not found');
+    }
+
+    protected function isModelNotFoundMessage(string $message): bool
+    {
+        return str_contains($message, 'No query results for model');
     }
 
     /**

@@ -7,6 +7,8 @@ namespace JOOservices\LaravelController\Tests\Unit;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use JOOservices\LaravelController\Formatters\ProblemDetailsFormatter;
+use JOOservices\LaravelController\OpenApi\EnvelopeContract;
 use JOOservices\LaravelController\Tests\Support\ApiResponsesDouble;
 use JOOservices\LaravelController\Tests\Support\FakeItemResource;
 use JOOservices\LaravelController\Tests\TestCase;
@@ -137,34 +139,24 @@ final class HasApiResponsesCoverageTest extends TestCase
     /**
      * @throws UnexpectedValueException
      */
-    public function testPaginatedAliasDelegatesToRespondWithPagination(): void
-    {
-        $paginator = new LengthAwarePaginator([['id' => 7]], 1, 1, 1);
-        $response = $this->responses->paginated($paginator);
-        $data = $this->jsonPayload($response);
-
-        self::assertSame(200, $response->getStatusCode());
-        self::assertIsArray($data['meta']);
-    }
-
-    /**
-     * @throws UnexpectedValueException
-     */
     public function testRespondWithCursorPagination(): void
     {
         $cursor = fake()->uuid();
         $next = fake()->uuid();
         $items = new Collection([['id' => 1], ['id' => 2]]);
 
-        $response = $this->responses->respondWithCursorPagination($items, $cursor, $next, true);
+        $response = $this->responses->respondWithCursorPagination($items, $cursor, $next);
         $data = $this->jsonPayload($response);
 
         self::assertIsArray($data['meta']);
         /** @var array<string, mixed> $meta */
         $meta = $data['meta'];
-        self::assertSame($cursor, $meta['cursor']);
-        self::assertSame($next, $meta['next_cursor']);
-        self::assertTrue($meta['has_more']);
+        self::assertIsArray($meta['pagination']);
+        /** @var array<string, mixed> $pagination */
+        $pagination = $meta['pagination'];
+        self::assertSame($cursor, $pagination['cursor']);
+        self::assertSame($next, $pagination['next_cursor']);
+        self::assertTrue($pagination['has_more']);
     }
 
     /**
@@ -177,7 +169,6 @@ final class HasApiResponsesCoverageTest extends TestCase
             [['id' => 3, 'name' => $name]],
             'a',
             null,
-            false,
             FakeItemResource::class,
         );
         $data = $this->jsonPayload($response);
@@ -204,10 +195,13 @@ final class HasApiResponsesCoverageTest extends TestCase
         self::assertIsArray($data['meta']);
         /** @var array<string, mixed> $meta */
         $meta = $data['meta'];
-        self::assertSame(0, $meta['offset']);
-        self::assertSame(2, $meta['limit']);
-        self::assertSame(5, $meta['total']);
-        self::assertTrue($meta['has_more']);
+        self::assertIsArray($meta['pagination']);
+        /** @var array<string, mixed> $pagination */
+        $pagination = $meta['pagination'];
+        self::assertSame(0, $pagination['offset']);
+        self::assertSame(2, $pagination['limit']);
+        self::assertSame(5, $pagination['total']);
+        self::assertTrue($pagination['has_more']);
     }
 
     /**
@@ -310,5 +304,111 @@ final class HasApiResponsesCoverageTest extends TestCase
 
         self::assertArrayHasKey('success', $data);
         self::assertTrue($data['success']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testRespondWithProblemReturnsRfc7807Payload(): void
+    {
+        $detail = fake()->sentence();
+        $response = $this->responses->respondWithProblem(
+            title: 'Validation failed',
+            status: 422,
+            detail: $detail,
+            errors: ['email' => ['invalid']],
+        );
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertStringContainsString(
+            EnvelopeContract::CONTENT_TYPE_PROBLEM_JSON,
+            (string) $response->headers->get('Content-Type'),
+        );
+        self::assertSame('https://jooservices.dev/problems/http-422', $data['type']);
+        self::assertSame('Validation failed', $data['title']);
+        self::assertSame(422, $data['status']);
+        self::assertSame($detail, $data['detail']);
+        self::assertSame(['email' => ['invalid']], $data['errors']);
+        self::assertArrayHasKey('trace_id', $data);
+        self::assertArrayNotHasKey('success', $data);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testProblemJsonProfileFormatsErrorsAsProblemDetails(): void
+    {
+        config([
+            'laravel-controller.response_profile' => EnvelopeContract::PROFILE_PROBLEM_JSON,
+            'laravel-controller.response_formatter' => null,
+        ]);
+
+        $response = $this->responses->error('Bad Request', 400);
+        $data = $this->jsonPayload($response);
+
+        self::assertStringContainsString(
+            EnvelopeContract::CONTENT_TYPE_PROBLEM_JSON,
+            (string) $response->headers->get('Content-Type'),
+        );
+        self::assertSame('Bad Request', $data['title']);
+        self::assertSame(400, $data['status']);
+
+        $ok = $this->responses->success(['id' => 1]);
+        $okData = $this->jsonPayload($ok);
+        self::assertTrue($okData['success']);
+        self::assertStringContainsString('application/json', (string) $ok->headers->get('Content-Type'));
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testMetaHeadersAreEchoedWhenPresent(): void
+    {
+        $idempotencyKey = fake()->uuid();
+        request()->headers->set('Idempotency-Key', $idempotencyKey);
+        request()->headers->set('X-RateLimit-Limit', '100');
+        request()->headers->set('X-RateLimit-Remaining', '99');
+        request()->headers->set('X-RateLimit-Reset', '1700000000');
+        request()->headers->set('Retry-After', '30');
+
+        $response = $this->responses->success(['ok' => true]);
+        $data = $this->jsonPayload($response);
+
+        self::assertIsArray($data['meta']);
+        /** @var array<string, mixed> $meta */
+        $meta = $data['meta'];
+        self::assertSame($idempotencyKey, $meta['idempotency_key']);
+        self::assertSame([
+            'limit' => '100',
+            'remaining' => '99',
+            'reset' => '1700000000',
+        ], $meta['rate_limit']);
+        self::assertSame('30', $meta['retry_after']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testMetaHeadersCanBeDisabled(): void
+    {
+        config(['laravel-controller.meta_headers.enabled' => false]);
+        request()->headers->set('Idempotency-Key', fake()->uuid());
+
+        $response = $this->responses->success(['ok' => true]);
+        $data = $this->jsonPayload($response);
+
+        self::assertIsArray($data['meta']);
+        /** @var array<string, mixed> $meta */
+        $meta = $data['meta'];
+        self::assertArrayNotHasKey('idempotency_key', $meta);
+    }
+
+    public function testProblemDetailsFormatterContentTypeConstant(): void
+    {
+        self::assertSame(
+            EnvelopeContract::CONTENT_TYPE_PROBLEM_JSON,
+            ProblemDetailsFormatter::contentType(),
+        );
     }
 }

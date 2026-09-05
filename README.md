@@ -5,22 +5,25 @@
 [![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=jooservices_laravel-controller&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=jooservices_laravel-controller)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/jooservices/laravel-controller/badge)](https://securityscorecards.dev/viewer/?uri=github.com/jooservices/laravel-controller)
 [![PHP Version](https://img.shields.io/badge/PHP-8.5%2B-blue.svg)](https://www.php.net/)
-[![Release](https://img.shields.io/badge/version-1.4.1-blue.svg)](CHANGELOG.md)
+[![Release](https://img.shields.io/badge/version-4.0.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Packagist Version](https://img.shields.io/packagist/v/jooservices/laravel-controller)](https://packagist.org/packages/jooservices/laravel-controller)
 
-**JOOservices Laravel Controller** is a Laravel API controller foundation for standardized JSON response envelopes, resource-friendly helpers, pagination metadata, status endpoints, trace IDs, and formatter-based response customization.
+**JOOservices Laravel Controller** is a Laravel API controller foundation for standardized JSON response envelopes, RFC 7807 Problem Details, OpenAPI envelope schemas, pagination metadata, status endpoints, trace IDs, and formatter-based response customization.
 
-Composer package: `jooservices/laravel-controller`
+Composer package: `jooservices/laravel-controller` — current line: **v4.0.0**. Upgrading from v1.x: see [UPGRADE-4.0.md](UPGRADE-4.0.md).
 
 ## Features
 
 - base API controller helpers for success, error, validation, status, and no-content responses
+- optional RFC 7807 Problem Details (`application/problem+json`) via profile or `respondWithProblem()`
+- stable OpenAPI 3.1 envelope schemas (`resources/openapi/envelope.v4.yaml`)
 - Laravel `JsonResource` and `ResourceCollection` friendly response helpers
 - standardized response envelope with configurable keys
-- length-aware, cursor, and offset pagination helpers
+- length-aware, cursor, and offset pagination helpers (`meta.pagination`)
+- echo of Idempotency-Key / rate-limit / Retry-After headers into `meta` (no storage)
 - trace ID support through a configurable request header
-- optional status endpoint with version, environment, maintenance, and health-check metadata
+- optional status endpoint with pluggable `StatusHealthCheck` probes
 - custom `ResponseFormatter` contract for teams that need a different top-level JSON shape
 - optional exception response helper for common Laravel exceptions
 - read-only `php artisan laravel-controller:doctor` diagnostics
@@ -28,7 +31,7 @@ Composer package: `jooservices/laravel-controller`
 ## Installation
 
 ```bash
-composer require jooservices/laravel-controller
+composer require jooservices/laravel-controller:^4.0
 ```
 
 ## Publish Config
@@ -123,6 +126,8 @@ public function index(UserIndexRequest $request, UserService $users): JsonRespon
 }
 ```
 
+Cursor and offset helpers nest fields under `meta.pagination`. You may pass a Laravel `CursorPaginator` directly to `respondWithCursorPagination()`.
+
 ## Error Response Example
 
 ```php
@@ -142,10 +147,14 @@ public function archive(UserArchiveRequest $request, UserService $users): JsonRe
 }
 ```
 
+For Problem Details, see [docs/02-user-guide/problem-details.md](docs/02-user-guide/problem-details.md) or set `response_profile` to `problem+json`.
+
 ## Status Endpoint
 
 When package routes are enabled, the status endpoint is available under the configured prefix.
 Without health checks it is a liveness probe (HTTP 200). With `status.checks` configured it acts as readiness: any failed check returns HTTP 503 and `status: unavailable`.
+
+Built-in checks: `database`, `cache`, `queue`. Custom checks: class-strings implementing `StatusHealthCheck`.
 
 
 ```bash
@@ -188,8 +197,10 @@ final class ApiResponseFormatter implements ResponseFormatter
 
 Important config keys:
 
+- `response_profile` (`envelope` | `problem+json`)
 - `response_formatter`
 - `keys`
+- `meta_headers`
 - `trace_id.header`
 - `use_translations`
 - `success_codes`
@@ -197,7 +208,7 @@ Important config keys:
 - `routes.enabled`
 - `routes.prefix`
 - `routes.auto_map_host_routes`
-- `status`
+- `status` (including pluggable checks)
 - `pagination_links`
 - `item_links`
 
@@ -208,6 +219,7 @@ This package is:
 - base API controller helpers
 - standard response envelope helpers
 - pagination and status response helpers
+- OpenAPI envelope schema artifact
 - formatter contract
 - optional exception response helper
 
@@ -219,14 +231,18 @@ This package is not:
 - validation package
 - full application exception-handler framework
 - JSON:API full implementation
+- idempotency store or rate-limit enforcer (headers are echoed only)
 - business logic layer
 
 ## Documentation
 
 - [Documentation Hub](docs/README.md)
+- [Upgrade to v4](UPGRADE-4.0.md)
 - [Architecture](docs/00-architecture/01-project-overview.md)
 - [Getting Started](docs/01-getting-started/quick-start.md)
 - [User Guide](docs/02-user-guide/response-envelopes.md)
+- [Problem Details](docs/02-user-guide/problem-details.md)
+- [OpenAPI Contract](docs/02-user-guide/openapi-contract.md)
 - [Examples](docs/03-examples/basic-controller.md)
 - [Development](docs/04-development/setup.md)
 - [Release Process](docs/04-development/release-process.md)
@@ -251,9 +267,11 @@ composer check
 composer ci
 ```
 
+Prefer Docker (`docker compose run --rm php …`) when host PHP is not 8.5.
+
 ## Security And Contributing
 
-Use GitHub issues for bug reports and security coordination unless a dedicated security policy is added.
+Use GitHub issues for bug reports and security coordination unless a dedicated security policy is added. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

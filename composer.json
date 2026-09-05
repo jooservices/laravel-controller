@@ -1,6 +1,6 @@
 {
     "name": "jooservices/laravel-controller",
-    "description": "Laravel API controller foundation for standardized JSON responses, pagination, status endpoints, trace IDs, and custom formatters.",
+    "description": "Laravel API controller foundation for standardized JSON envelopes, RFC 7807 Problem Details, OpenAPI schemas, pagination, status checks, and custom formatters.",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -14,9 +14,12 @@
         "laravel",
         "laravel12",
         "laravel13",
+        "openapi",
         "pagination",
         "php",
         "php85",
+        "problem-details",
+        "rfc7807",
         "response-envelope",
         "status-endpoint",
         "trace-id"

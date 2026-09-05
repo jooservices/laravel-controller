@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use JOOservices\LaravelController\Tests\Support\FakeStatusHealthCheck;
 use JOOservices\LaravelController\Tests\Support\SlowStatusHealthChecker;
 use JOOservices\LaravelController\Tests\TestCase;
 use Mockery;
@@ -204,6 +205,23 @@ final class StatusControllerTest extends TestCase
         self::assertFalse($results['cache']['ok']);
         self::assertArrayHasKey('message', $results['cache']);
         self::assertSame('timeout', $results['cache']['message']);
+    }
+
+    public function testStatusRunsCustomStatusHealthCheckClass(): void
+    {
+        config([
+            'laravel-controller.status.checks' => [FakeStatusHealthCheck::class],
+            'laravel-controller.status.checks_timeout_seconds' => 5,
+        ]);
+
+        $response = $this->getJson('/api/v1/status');
+
+        $response->assertOk();
+        $checks = $response->json('data.checks');
+        self::assertIsArray($checks);
+        self::assertArrayHasKey('fake_probe', $checks);
+        self::assertIsArray($checks['fake_probe']);
+        self::assertTrue($checks['fake_probe']['ok']);
     }
 
     private function app(): Application

@@ -25,6 +25,20 @@
 'success_codes' => [200, 201],
 ```
 
+## Problem Details Profile
+
+```php
+'response_profile' => 'problem+json',
+```
+
+## Meta Header Echo
+
+```php
+'meta_headers' => [
+    'enabled' => true,
+],
+```
+
 ## Custom Response Formatter
 
 ```php
@@ -47,6 +61,14 @@ final class ApiResponseFormatter implements ResponseFormatter
         ];
     }
 }
+```
+
+## Pluggable Status Health Check
+
+```php
+'status' => [
+    'checks' => ['database', App\Health\RedisCheck::class],
+],
 ```
 
 ## DTO Or Data Object Input

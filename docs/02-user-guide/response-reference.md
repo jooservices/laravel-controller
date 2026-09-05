@@ -60,3 +60,22 @@ This JOOservices Laravel Controller reference describes the maintained response 
 ```
 
 `respondTooManyRequestsFromRequest()` can derive the retry value from the request context when your middleware sets it.
+
+When `meta_headers.enabled` is true, present Idempotency-Key / rate-limit / Retry-After request headers are also echoed under `meta`.
+
+## Problem Details error example (`response_profile = problem+json`)
+
+```json
+{
+  "type": "https://jooservices.dev/problems/http-422",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "One or more fields are invalid.",
+  "errors": {
+    "email": ["The email field is required."]
+  },
+  "trace_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+See [Problem Details](./problem-details.md) and [OpenAPI Contract](./openapi-contract.md).

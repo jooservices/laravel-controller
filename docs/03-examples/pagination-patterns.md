@@ -13,14 +13,24 @@ public function index(UserIndexRequest $request, UserService $users): JsonRespon
 }
 ```
 
-Cursor-style and offset-style helpers are available for services that do not return Laravel length-aware paginators:
+Cursor-style and offset-style helpers are available for services that do not return Laravel length-aware paginators. Fields nest under `meta.pagination`.
+
+Pass a Laravel `CursorPaginator` for automatic cursor / links extraction:
+
+```php
+return $this->respondWithCursorPagination(
+    items: $users->cursorPaginate(15),
+    resourceClass: UserResource::class,
+);
+```
+
+Or supply an iterable plus cursors:
 
 ```php
 return $this->respondWithCursorPagination(
     items: $users->cursorPage($request->validated()),
     cursor: $request->validated('cursor'),
     nextCursor: $users->nextCursor(),
-    hasMore: $users->hasMore(),
     resourceClass: UserResource::class,
 );
 ```

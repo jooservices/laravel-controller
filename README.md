@@ -1,17 +1,17 @@
 # JOOservices Laravel Controller
 
-[![codecov](https://codecov.io/gh/jooservices/laravel-controller/branch/develop/graph/badge.svg)](https://codecov.io/gh/jooservices/laravel-controller)
 [![CI](https://github.com/jooservices/laravel-controller/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/jooservices/laravel-controller/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/jooservices/laravel-controller/graph/badge.svg)](https://codecov.io/gh/jooservices/laravel-controller)
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=jooservices_laravel-controller&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=jooservices_laravel-controller)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/jooservices/laravel-controller/badge)](https://securityscorecards.dev/viewer/?uri=github.com/jooservices/laravel-controller)
 [![PHP Version](https://img.shields.io/badge/PHP-8.5%2B-blue.svg)](https://www.php.net/)
+[![Release](https://img.shields.io/badge/version-1.4.1-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Packagist Version](https://img.shields.io/packagist/v/jooservices/laravel-controller)](https://packagist.org/packages/jooservices/laravel-controller)
 
 **JOOservices Laravel Controller** is a Laravel API controller foundation for standardized JSON response envelopes, resource-friendly helpers, pagination metadata, status endpoints, trace IDs, and formatter-based response customization.
 
 Composer package: `jooservices/laravel-controller`
-
-Current release: `1.4.1`
 
 ## Features
 

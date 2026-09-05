@@ -24,10 +24,11 @@ Default envelope shape:
 - `respondWithResource()`
 - `respondWithResourceCollection()`
 - `respondWithPagination()` / `respondWithCursorPagination()` / `respondWithOffsetPagination()`
+  (`respondWithPagination()` accepts LengthAware, simple, or Cursor paginators only)
 - `respondWithError()` / `respondWithProblem()` (RFC 7807)
 - `respondNoContent()`
 
-Legacy aliases such as `success()`, `error()`, `respondWithItem()`, and `respondWithCollection()` remain available. `paginated()` was removed in v4 — use `respondWithPagination()`.
+Legacy aliases such as `success()`, `error()`, `respondWithItem()`, and `respondWithCollection()` remain available. `paginated()` was removed in v4 — use `respondWithPagination()`. Single `JsonResource` `additional()` / `with()` keys are preserved under `meta`.
 
 See [Problem Details](./problem-details.md) and [OpenAPI Contract](./openapi-contract.md).
 

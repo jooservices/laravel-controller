@@ -2,7 +2,7 @@
 
 This documentation covers the public API surface, expected response contracts, and contributor workflow for the **JOOservices Laravel Controller** package.
 
-The package name is `jooservices/laravel-controller`. The PHP namespace is `JOOservices\LaravelController\`. Current major: **v4**.
+The package name is `jooservices/laravel-controller`. The PHP namespace is `JOOservices\LaravelController\`. Current line: **v4.0.1** (major **v4**).
 
 ## Recommended reading order
 

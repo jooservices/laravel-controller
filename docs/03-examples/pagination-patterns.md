@@ -13,6 +13,8 @@ public function index(UserIndexRequest $request, UserService $users): JsonRespon
 }
 ```
 
+`respondWithPagination()` also accepts Laravel `simplePaginate()` / `Paginator` and `cursorPaginate()` / `CursorPaginator`. Unrecognized inputs throw `UnexpectedValueException`.
+
 Cursor-style and offset-style helpers are available for services that do not return Laravel length-aware paginators. Fields nest under `meta.pagination`.
 
 Pass a Laravel `CursorPaginator` for automatic cursor / links extraction:

@@ -34,6 +34,27 @@ All three pagination styles nest fields under **`meta.pagination`** (v4). When `
 }
 ```
 
+### Simple pagination example (`simplePaginate()`)
+
+```php
+return $this->respondWithPagination(
+    paginator: $users->simplePaginate(15),
+    resourceClass: UserResource::class,
+);
+```
+
+```json
+{
+  "meta": {
+    "pagination": {
+      "current_page": 1,
+      "per_page": 15,
+      "has_more": true
+    }
+  }
+}
+```
+
 ### Cursor example
 
 ```php

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+IMAGE="${PHPDOC_IMAGE:-phpdoc/phpdoc:3}"
+
+ARGS=("$@")
+if [ ${#ARGS[@]} -eq 0 ]; then
+    ARGS=(run --config=/data/phpdoc.xml)
+fi
+
+exec docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
+    -v "$ROOT":/data \
+    -w /tmp \
+    "$IMAGE" "${ARGS[@]}"

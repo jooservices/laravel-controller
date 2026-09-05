@@ -1,5 +1,3 @@
-# Automatically label PRs based on changed files
-
 'tests':
   - changed-files:
     - any-glob-to-any-file: 'tests/**/*'
@@ -7,8 +5,7 @@
 'documentation':
   - changed-files:
     - any-glob-to-any-file:
-      - '*.md'
-      - '**/*.md'
+      - '**.md'
       - 'docs/**/*'
 
 'dependencies':
@@ -19,32 +16,20 @@
 
 'ci/cd':
   - changed-files:
-    - any-glob-to-any-file: '.github/**/*'
+    - any-glob-to-any-file:
+      - '.github/**/*'
+      - 'captainhook.json'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
 
 'configuration':
   - changed-files:
     - any-glob-to-any-file:
-      - '*.xml'
-      - '*.neon'
+      - '**.xml'
+      - '**.neon'
+      - '.php-cs-fixer.dist.php'
       - 'pint.json'
 
 'source':
   - changed-files:
     - any-glob-to-any-file: 'src/**/*'
-
-'routes':
-  - changed-files:
-    - any-glob-to-any-file: 'routes/**/*'
-
-'translations':
-  - changed-files:
-    - any-glob-to-any-file: 'resources/lang/**/*'
-
-'ai':
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'ai/**/*'
-      - 'AGENTS.md'
-      - 'CLAUDE.md'
-      - '.github/copilot-instructions.md'
-      - '.github/skills/**/*'

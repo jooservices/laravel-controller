@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JOOservices\LaravelController\Traits;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -26,19 +28,21 @@ trait HasApiResponses
      *
      * @param  array<string, mixed>  $meta
      * @param  array<int, string>|array<string, string>  $warnings  Non-fatal warnings.
+     * @throws UnexpectedValueException
      */
     public function success(
         mixed $data = null,
         string $message = 'Success',
         int $code = Response::HTTP_OK,
         array $meta = [],
-        array $warnings = []
+        array $warnings = [],
     ): JsonResponse {
         return $this->formatResponse(true, $code, $message, $data, null, $meta, $warnings);
     }
 
     /**
      * Return an error response.
+     * @throws UnexpectedValueException
      */
     public function error(string $message, int $code = Response::HTTP_BAD_REQUEST, mixed $errors = null): JsonResponse
     {
@@ -50,30 +54,33 @@ trait HasApiResponses
      *
      * @param  array<string, mixed>  $meta
      * @param  array<int, string>|array<string, string>  $warnings
+     * @throws UnexpectedValueException
      */
     public function respondWithData(
         mixed $data = null,
         string $message = 'Success',
         int $code = Response::HTTP_OK,
         array $meta = [],
-        array $warnings = []
+        array $warnings = [],
     ): JsonResponse {
         return $this->success($data, $message, $code, $meta, $warnings);
     }
 
     /**
      * Laravel-friendly alias for returning an API error envelope.
+     * @throws UnexpectedValueException
      */
     public function respondWithError(
         string $message,
         int $code = Response::HTTP_BAD_REQUEST,
-        mixed $errors = null
+        mixed $errors = null,
     ): JsonResponse {
         return $this->error($message, $code, $errors);
     }
 
     /**
      * Laravel-friendly alias for a 204 response.
+     * @throws UnexpectedValueException
      */
     public function respondNoContent(): JsonResponse
     {
@@ -82,6 +89,7 @@ trait HasApiResponses
 
     /**
      * Return a created response (201).
+     * @throws UnexpectedValueException
      */
     public function created(mixed $data = null, string $message = 'Created'): JsonResponse
     {
@@ -91,6 +99,7 @@ trait HasApiResponses
     /**
      * Return a no content response (204).
      * When config envelope_204 is true, returns the same envelope (data: null, trace_id, etc.).
+     * @throws UnexpectedValueException
      */
     public function noContent(): JsonResponse
     {
@@ -102,7 +111,7 @@ trait HasApiResponses
                 null,
                 null,
                 [],
-                []
+                [],
             );
         }
 
@@ -111,6 +120,7 @@ trait HasApiResponses
 
     /**
      * Return an accepted response (202). Use for async operations (e.g. "request accepted, processing").
+     * @throws UnexpectedValueException
      */
     public function accepted(mixed $data = null, string $message = 'Accepted'): JsonResponse
     {
@@ -119,6 +129,7 @@ trait HasApiResponses
 
     /**
      * Return a conflict response (409). Use for duplicate resource or version conflicts.
+     * @throws UnexpectedValueException
      */
     public function conflict(string $message = 'Conflict', mixed $errors = null): JsonResponse
     {
@@ -127,6 +138,7 @@ trait HasApiResponses
 
     /**
      * Return a gone response (410). Use for deprecated or permanently removed resources.
+     * @throws UnexpectedValueException
      */
     public function gone(string $message = 'Gone'): JsonResponse
     {
@@ -135,6 +147,7 @@ trait HasApiResponses
 
     /**
      * Return a bad request response (400).
+     * @throws UnexpectedValueException
      */
     public function badRequest(string $message = 'Bad Request', mixed $errors = null): JsonResponse
     {
@@ -143,6 +156,7 @@ trait HasApiResponses
 
     /**
      * Return an unauthorized response (401).
+     * @throws UnexpectedValueException
      */
     public function unauthorized(string $message = 'Unauthorized'): JsonResponse
     {
@@ -153,6 +167,7 @@ trait HasApiResponses
 
     /**
      * Return a forbidden response (403).
+     * @throws UnexpectedValueException
      */
     public function forbidden(string $message = 'Forbidden'): JsonResponse
     {
@@ -163,6 +178,7 @@ trait HasApiResponses
 
     /**
      * Return a not found response (404).
+     * @throws UnexpectedValueException
      */
     public function notFound(string $message = self::MESSAGE_NOT_FOUND): JsonResponse
     {
@@ -178,10 +194,11 @@ trait HasApiResponses
      * For backward compatibility, the first argument may be an array of errors (message then defaults).
      *
      * @param  string|array<string, array<int, string>>  $messageOrErrors
+     * @throws UnexpectedValueException
      */
     public function unprocessable(
-        string|array $messageOrErrors = self::MESSAGE_UNPROCESSABLE,
-        mixed $errors = null
+        string | array $messageOrErrors = self::MESSAGE_UNPROCESSABLE,
+        mixed $errors = null,
     ): JsonResponse {
         if (is_array($messageOrErrors)) {
             $errors = $messageOrErrors;
@@ -196,6 +213,7 @@ trait HasApiResponses
 
     /**
      * Return an internal server error response (500).
+     * @throws UnexpectedValueException
      */
     public function internalError(string $message = 'Internal Server Error'): JsonResponse
     {
@@ -229,6 +247,8 @@ trait HasApiResponses
      * @param  array<string, mixed>  $meta
      * @param  array<int, string>|array<string, string>  $warnings
      *
+     * @throws UnexpectedValueException
+     *
      * @SuppressWarnings("PHPMD.StaticAccess")
      */
     protected function formatResponse(
@@ -238,7 +258,7 @@ trait HasApiResponses
         mixed $data = null,
         mixed $errors = null,
         array $meta = [],
-        array $warnings = []
+        array $warnings = [],
     ): JsonResponse {
         [$data, $meta] = $this->resolveResourcePayload($data, $meta);
         $data = $this->normalizeResponseValue($data);
@@ -316,8 +336,8 @@ trait HasApiResponses
     {
         return array_filter(
             (array) config('laravel-controller.keys', []),
-            static fn (mixed $value, mixed $key): bool => is_string($key) && is_string($value),
-            ARRAY_FILTER_USE_BOTH
+            static fn(mixed $value, mixed $key): bool => is_string($key) && is_string($value),
+            ARRAY_FILTER_USE_BOTH,
         );
     }
 
@@ -336,6 +356,8 @@ trait HasApiResponses
      *     keys: array<string, string>
      * }  $response
      * @return array<string, mixed>
+     *
+     * @throws UnexpectedValueException
      */
     protected function resolveResponsePayload(array $response): array
     {
@@ -348,7 +370,7 @@ trait HasApiResponses
                 throw new UnexpectedValueException(sprintf(
                     'Configured response formatter [%s] must implement %s.',
                     $formatterClass,
-                    ResponseFormatter::class
+                    ResponseFormatter::class,
                 ));
             }
 
@@ -401,7 +423,7 @@ trait HasApiResponses
         }
 
         if (is_array($value)) {
-            return array_map(fn (mixed $item): mixed => $this->normalizeResponseValue($item), $value);
+            return array_map(fn(mixed $item): mixed => $this->normalizeResponseValue($item), $value);
         }
 
         return $value;
@@ -442,10 +464,11 @@ trait HasApiResponses
     /**
      * Return a too many requests response (429).
      * Use respondTooManyRequestsFromRequest() to derive retry_after from Laravel's rate limiter.
+     * @throws UnexpectedValueException
      */
     public function tooManyRequests(
         string $message = self::MESSAGE_TOO_MANY_REQUESTS,
-        int $retryAfter = 60
+        int $retryAfter = 60,
     ): JsonResponse {
         $msg = $message === self::MESSAGE_TOO_MANY_REQUESTS
             ? $this->trans(self::MESSAGE_TOO_MANY_REQUESTS, 'too_many_requests')
@@ -459,10 +482,11 @@ trait HasApiResponses
     /**
      * Return 429 using Retry-After from request (e.g. throttle or custom limiter).
      * Falls back to $defaultRetryAfter seconds when header is missing.
+     * @throws UnexpectedValueException
      */
     public function respondTooManyRequestsFromRequest(
         string $message = self::MESSAGE_TOO_MANY_REQUESTS,
-        int $defaultRetryAfter = 60
+        int $defaultRetryAfter = 60,
     ): JsonResponse {
         $retryAfter = (int) request()->header('Retry-After', (string) $defaultRetryAfter);
 
@@ -473,12 +497,13 @@ trait HasApiResponses
      * Return a paginated response. Use with LengthAwarePaginator; optionally pass a resource class to transform items.
      *
      * @param  class-string<JsonResource>|null  $resourceClass
+     * @throws UnexpectedValueException
      */
     public function respondWithPagination(
         mixed $paginator,
         ?string $resourceClass = null,
         string $message = 'Success',
-        int $code = Response::HTTP_OK
+        int $code = Response::HTTP_OK,
     ): JsonResponse {
         if ($paginator instanceof LengthAwarePaginator) {
             $items = $paginator->items();
@@ -518,13 +543,14 @@ trait HasApiResponses
      * @param  string|int|null  $cursor  Current cursor (opaque token or id).
      * @param  string|int|null  $nextCursor  Cursor for next page, or null if no next page.
      * @param  class-string<JsonResource>|null  $resourceClass
+     * @throws UnexpectedValueException
      */
     public function respondWithCursorPagination(
         iterable $items,
         $cursor,
         $nextCursor,
         bool $hasMore,
-        ?string $resourceClass = null
+        ?string $resourceClass = null,
     ): JsonResponse {
         $items = is_array($items) ? $items : iterator_to_array($items);
         if ($resourceClass !== null && class_exists($resourceClass)) {
@@ -545,13 +571,14 @@ trait HasApiResponses
      *
      * @param  iterable<mixed>  $items
      * @param  class-string<JsonResource>|null  $resourceClass
+     * @throws UnexpectedValueException
      */
     public function respondWithOffsetPagination(
         iterable $items,
         int $offset,
         int $limit,
         int $total,
-        ?string $resourceClass = null
+        ?string $resourceClass = null,
     ): JsonResponse {
         $items = is_array($items) ? $items : iterator_to_array($items);
         if ($resourceClass !== null && class_exists($resourceClass)) {
@@ -572,6 +599,7 @@ trait HasApiResponses
      * @deprecated Use respondWithPagination() instead. Will be removed in the next major version.
      *
      * @param  class-string<JsonResource>|null  $resourceClass
+     * @throws UnexpectedValueException
      */
     public function paginated(mixed $paginator, ?string $resourceClass = null): JsonResponse
     {
@@ -582,15 +610,18 @@ trait HasApiResponses
      * Convenience helper for returning a single item via an API Resource class.
      * When item_links config is true, pass $links or use item_links_default.
      *
-     * @param  class-string<JsonResource>  $resourceClass
+     * @param  string  $resourceClass  Resource class name; falls back to raw item when missing.
      * @param  array<string, string>|null  $links  HAL-style links (e.g. self, index).
+     *
+     * @throws UnexpectedValueException
      */
     public function respondWithItem(mixed $item, string $resourceClass, ?array $links = null): JsonResponse
     {
-        if (! class_exists($resourceClass)) {
+        if (! class_exists($resourceClass) || ! is_a($resourceClass, JsonResource::class, true)) {
             return $this->success($item);
         }
 
+        /** @var class-string<JsonResource> $resourceClass */
         $resource = $resourceClass::make($item);
         $data = $resource->resolve();
         $meta = [];
@@ -598,7 +629,7 @@ trait HasApiResponses
         if (config('laravel-controller.item_links', true) === true) {
             $merged = array_merge(
                 (array) config('laravel-controller.item_links_default', []),
-                (array) $links
+                (array) $links,
             );
             if ($merged !== []) {
                 $meta['links'] = $merged;
@@ -608,18 +639,24 @@ trait HasApiResponses
         return $this->success($data, 'Success', Response::HTTP_OK, $meta);
     }
 
+    /**
+     * @throws UnexpectedValueException
+     */
     public function respondWithResource(
         JsonResource $resource,
         string $message = 'Success',
-        int $code = Response::HTTP_OK
+        int $code = Response::HTTP_OK,
     ): JsonResponse {
         return $this->success($resource, $message, $code);
     }
 
+    /**
+     * @throws UnexpectedValueException
+     */
     public function respondWithResourceCollection(
         ResourceCollection $collection,
         string $message = 'Success',
-        int $code = Response::HTTP_OK
+        int $code = Response::HTTP_OK,
     ): JsonResponse {
         return $this->success($collection, $message, $code);
     }
@@ -628,14 +665,17 @@ trait HasApiResponses
      * Convenience helper for returning a collection via an API Resource class.
      *
      * @param  iterable<mixed>  $items
-     * @param  class-string<JsonResource>  $resourceClass
+     * @param  string  $resourceClass  Resource class name; falls back to raw items when missing.
+     *
+     * @throws UnexpectedValueException
      */
     public function respondWithCollection(iterable $items, string $resourceClass): JsonResponse
     {
-        if (! class_exists($resourceClass)) {
+        if (! class_exists($resourceClass) || ! is_a($resourceClass, JsonResource::class, true)) {
             return $this->success($items);
         }
 
+        /** @var class-string<JsonResource> $resourceClass */
         $collection = $resourceClass::collection($items);
 
         return $this->success($collection);

@@ -6,8 +6,8 @@
             {
                 "action": "\\CaptainHook\\App\\Hook\\Message\\Action\\Regex",
                 "options": {
-                    "regex": "/^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\\(.+\\))?!?:\\s.{1,100}$/",
-                    "error": "Commit message must follow Conventional Commits format: <type>(<scope>): <description>"
+                    "regex": "/^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\\(.+\\))?!?:\\s[A-Z].{0,99}$/",
+                    "error": "Commit message must follow Conventional Commits with an uppercase subject: <type>(<scope>): Subject"
                 }
             }
         ]
@@ -16,25 +16,11 @@
         "enabled": true,
         "actions": [
             {
-                "action": "\\CaptainHook\\App\\Hook\\PHP\\Action\\Linting",
-                "options": {
-                    "extensions": "php"
-                }
-            },
-            {
-                "action": "echo '🔒 Scanning for secrets...' && gitleaks protect --staged --verbose --redact --config=.gitleaks.toml",
+                "action": "echo '🔒 Scanning for secrets...' && if ! command -v gitleaks >/dev/null 2>&1; then echo 'Note: gitleaks not available in this environment; CI still scans on push'; exit 0; fi; gitleaks protect --staged --verbose --redact --config=.gitleaks.toml",
                 "conditions": []
             },
             {
-                "action": "echo 'Running Pint style check...' && composer lint:pint",
-                "conditions": []
-            },
-            {
-                "action": "echo 'Running PHPCS structural checks...' && composer lint:phpcs",
-                "conditions": []
-            },
-            {
-                "action": "echo 'Running PHPStan static analysis...' && composer lint:phpstan",
+                "action": "echo 'Running linters...' && composer lint",
                 "conditions": []
             }
         ]
@@ -43,7 +29,7 @@
         "enabled": true,
         "actions": [
             {
-                "action": "if command -v gitleaks >/dev/null 2>&1; then echo '🔒 Scanning commits for secrets...' && gitleaks detect --verbose --redact --config=.gitleaks.toml --log-opts=\"origin/develop..HEAD\"; else echo 'Note: Gitleaks scan of unpushed commits skipped because gitleaks is not installed (brew install gitleaks)'; fi",
+                "action": "echo '🔒 Scanning commits for secrets...' && if ! command -v gitleaks >/dev/null 2>&1; then echo 'Note: gitleaks not available in this environment; CI still scans on push'; exit 0; fi; default_ref=$(git symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/@@'); gitleaks detect --verbose --redact --config=.gitleaks.toml --log-opts=\"${default_ref:-origin/develop}..HEAD\"",
                 "conditions": []
             },
             {

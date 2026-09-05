@@ -1,3 +1,4 @@
+# Tag-driven release — only after owner go-ahead.
 name: Release
 
 on:
@@ -11,26 +12,97 @@ concurrency:
 
 permissions:
   contents: write
+  security-events: write
+  actions: read
 
 jobs:
   release:
+    name: Release
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6.0.2
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          generate_release_notes: true
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Refresh Packagist
-        env:
-          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
-          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+      - name: Verify tag commit is on master
         run: |
-          if [ -n "$PACKAGIST_USERNAME" ] && [ -n "$PACKAGIST_TOKEN" ]; then
-            curl -XPOST -H'content-type:application/json' \
-              "https://packagist.org/api/update-package?username=$PACKAGIST_USERNAME" \
-              -d'{"repository":{"url":"https://github.com/jooservices/laravel-controller"},"api_token":"'"$PACKAGIST_TOKEN"'"}'
+          git fetch origin master
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/master; then
+            echo "Refusing release: tag commit is not on origin/master"
+            exit 1
           fi
+
+      - name: Build PHP image
+        run: tools/ci/docker-compose build php
+
+      - name: Install dependencies
+        run: tools/ci/docker-compose run --rm php composer install --no-interaction --prefer-dist
+
+      - name: Validate
+        run: tools/ci/docker-compose run --rm php composer validate --strict
+
+      - name: Lint
+        run: tools/ci/docker-compose run --rm php composer lint
+
+      - name: Test with coverage
+        run: |
+          mkdir -p build/coverage
+          tools/ci/docker-compose run --rm php ./vendor/bin/phpunit \
+            --coverage-clover=build/coverage/clover-all.xml
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          # mirror.gcr.io (Trivy's default DB source) can resolve to an
+          # IPv6-only address some runners cannot route. Pull the DB
+          # straight from GHCR instead.
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db:1
+        with:
+          scan-type: image
+          image-ref: jooservices/laravel-controller:php85
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Install GitHub CLI
+        run: |
+          curl -sSL https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.tar.gz | tar xz -C /tmp
+          sudo mv /tmp/gh_2.63.2_linux_amd64/bin/gh /usr/local/bin/gh
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --generate-notes \
+            sbom.spdx.json

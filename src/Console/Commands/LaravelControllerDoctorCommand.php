@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JOOservices\LaravelController\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use InvalidArgumentException;
 use JOOservices\LaravelController\Contracts\ResponseFormatter;
-use Throwable;
 
 class LaravelControllerDoctorCommand extends Command
 {
@@ -12,10 +15,13 @@ class LaravelControllerDoctorCommand extends Command
 
     protected $description = 'Inspect JOOservices Laravel Controller package configuration and bindings.';
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function handle(): int
     {
         $checks = $this->checks();
-        $hasFailures = collect($checks)->contains(static fn (array $check): bool => $check['ok'] === false);
+        $hasFailures = collect($checks)->contains(static fn(array $check): bool => $check['ok'] === false);
 
         if ($this->option('json') === true) {
             $this->line((string) json_encode([
@@ -97,8 +103,8 @@ class LaravelControllerDoctorCommand extends Command
         }
 
         try {
-            $formatter = app($formatterClass);
-        } catch (Throwable $exception) {
+            $formatter = $this->laravel->make($formatterClass);
+        } catch (BindingResolutionException $exception) {
             return [
                 'name' => 'response_formatter',
                 'ok' => false,

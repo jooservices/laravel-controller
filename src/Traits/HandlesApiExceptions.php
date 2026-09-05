@@ -1,16 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace JOOservices\LaravelController\Traits;
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
+use UnexpectedValueException;
 
 trait HandlesApiExceptions
 {
@@ -18,6 +20,8 @@ trait HandlesApiExceptions
 
     /**
      * Render an exception into an API response.
+     *
+     * @throws UnexpectedValueException
      */
     public function renderApiException(Throwable $exception): JsonResponse
     {
@@ -28,7 +32,9 @@ trait HandlesApiExceptions
         }
 
         if ($exception instanceof ModelNotFoundException || $exception instanceof NotFoundHttpException) {
-            return $this->notFound($exception->getMessage() ?: 'Resource not found');
+            $message = $exception->getMessage();
+
+            return $this->notFound($message !== '' ? $message : 'Resource not found');
         }
 
         if ($exception instanceof AuthenticationException) {
@@ -43,8 +49,10 @@ trait HandlesApiExceptions
             return $this->error($exception->getMessage(), $exception->getStatusCode());
         }
 
+        $debug = config('app.debug');
+
         return $this->internalError(
-            config('app.debug') ? $exception->getMessage() : 'Server Error'
+            $debug === true ? $exception->getMessage() : 'Server Error',
         );
     }
 
@@ -61,7 +69,13 @@ trait HandlesApiExceptions
             $errors = $exception->errors();
             $first = reset($errors);
 
-            return is_array($first) ? (string) reset($first) : (string) $first;
+            if (! is_array($first)) {
+                return is_string($first) ? $first : 'Unprocessable Entity';
+            }
+
+            $firstMessage = reset($first);
+
+            return is_string($firstMessage) ? $firstMessage : 'Unprocessable Entity';
         }
 
         return $configMessage;

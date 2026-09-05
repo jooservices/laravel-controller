@@ -2,7 +2,7 @@ name: OpenSSF Scorecard
 
 on:
   push:
-    branches: [develop, master]
+    branches: [master]
   schedule:
     - cron: '0 0 * * 1'
   workflow_dispatch:
@@ -11,11 +11,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions: read-all
-
 jobs:
   scorecard:
     name: Scorecard Analysis
+    # publish_results requires a GitHub-hosted Ubuntu runner.
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -24,12 +23,13 @@ jobs:
       actions: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Run OpenSSF Scorecard
-        uses: ossf/scorecard-action@v2.4.3
+        uses: ossf/scorecard-action@v2.4.4
         with:
           results_file: results.sarif
           results_format: sarif

@@ -1,38 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 $finder = PhpCsFixer\Finder::create()
     ->in([
         __DIR__ . '/src',
         __DIR__ . '/tests',
-    ]);
+    ])
+    ->name('*.php')
+    ->ignoreDotFiles(true)
+    ->ignoreVCS(true);
 
+// Pint is the primary formatter. PHP-CS-Fixer is PHPDoc-only.
 return (new PhpCsFixer\Config())
     ->setRiskyAllowed(false)
     ->setRules([
-        '@PSR12' => true,
-        'array_syntax' => ['syntax' => 'short'],
-        'binary_operator_spaces' => ['default' => 'single_space'],
-        'blank_line_after_namespace' => true,
-        'blank_line_after_opening_tag' => true,
-        'blank_line_before_statement' => [
-            'statements' => ['return', 'throw'],
+        'general_phpdoc_annotation_remove' => [
+            'annotations' => ['author', 'package', 'subpackage'],
         ],
-        'braces_position' => [
-            'classes_opening_brace' => 'next_line_unless_newline_at_signature_end',
-            'functions_opening_brace' => 'next_line_unless_newline_at_signature_end',
-            'anonymous_classes_opening_brace' => 'next_line_unless_newline_at_signature_end',
+        'general_phpdoc_tag_rename' => [
+            'replacements' => ['inheritDocs' => 'inheritDoc'],
         ],
-        'cast_spaces' => ['space' => 'single'],
-        'class_definition' => false,
-        'concat_space' => ['spacing' => 'one'],
-        'declare_parentheses' => true,
-        'lowercase_keywords' => true,
-        'method_argument_space' => ['on_multiline' => 'ensure_fully_multiline'],
-        'no_extra_blank_lines' => true,
-        'no_trailing_whitespace' => true,
-        'no_unused_imports' => true,
-        'ordered_imports' => ['sort_algorithm' => 'alpha'],
-        'single_blank_line_at_eof' => true,
-        'single_quote' => true,
+        'phpdoc_no_alias_tag' => ['replacements' => ['type' => 'var']],
+        'phpdoc_scalar' => true,
+        'phpdoc_trim' => true,
+        'phpdoc_types' => true,
     ])
-    ->setFinder($finder);
+    ->setFinder($finder)
+    ->setCacheFile(__DIR__ . '/.php-cs-fixer.cache');

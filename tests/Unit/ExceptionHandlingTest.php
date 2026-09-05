@@ -1,61 +1,176 @@
 <?php
 
-namespace Tests\Unit;
+declare(strict_types=1);
+
+namespace JOOservices\LaravelController\Tests\Unit;
 
 use Exception;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use JOOservices\LaravelController\Traits\HandlesApiExceptions;
-use Tests\TestCase;
+use JOOservices\LaravelController\Tests\Support\ApiExceptionHandlerDouble;
+use JOOservices\LaravelController\Tests\Support\UserModelStub;
+use JOOservices\LaravelController\Tests\TestCase;
+use OverflowException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use UnexpectedValueException;
 
-class ExceptionHandlingTest extends TestCase
+final class ExceptionHandlingTest extends TestCase
 {
-    public function testItHandlesModelNotFound()
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItHandlesModelNotFound(): void
     {
-        $handler = new class()
-        {
-            use HandlesApiExceptions;
-        };
+        $handler = new ApiExceptionHandlerDouble();
 
         $exception = new ModelNotFoundException();
-        $exception->setModel('User');
+        $exception->setModel(UserModelStub::class);
 
         $response = $handler->renderApiException($exception);
+        $data = $this->jsonPayload($response);
 
-        $this->assertEquals(404, $response->getStatusCode());
-        $data = $response->getData(true);
-        $this->assertEquals('No query results for model [User].', $data['message']); // Default fallback
+        self::assertSame(404, $response->getStatusCode());
+        self::assertSame(
+            'No query results for model [' . UserModelStub::class . '].',
+            $data['message'],
+        );
     }
 
-    public function testItHandlesValidationException()
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItHandlesNotFoundHttpExceptionWithEmptyMessage(): void
     {
-        $handler = new class()
-        {
-            use HandlesApiExceptions;
-        };
+        $handler = new ApiExceptionHandlerDouble();
+        $response = $handler->renderApiException(new NotFoundHttpException(''));
+        $data = $this->jsonPayload($response);
 
-        $validator = Validator::make([], ['field' => 'required']);
-        try {
-            $validator->validate();
-        } catch (ValidationException $e) {
-            $response = $handler->renderApiException($e);
-
-            $this->assertEquals(422, $response->getStatusCode());
-            $data = $response->getData(true);
-            $this->assertArrayHasKey('errors', $data);
-        }
+        self::assertSame(404, $response->getStatusCode());
+        self::assertSame('Resource not found', $data['message']);
     }
 
-    public function testItHandlesGenericException()
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItHandlesValidationException(): void
     {
-        $handler = new class()
-        {
-            use HandlesApiExceptions;
-        };
+        $handler = new ApiExceptionHandlerDouble();
+        $exception = ValidationException::withMessages([
+            'field' => ['Required'],
+        ]);
 
+        $response = $handler->renderApiException($exception);
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertArrayHasKey('errors', $data);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testValidationMessageUsesFirstErrorWhenConfigured(): void
+    {
+        config(['laravel-controller.validation.message' => 'first']);
+        $handler = new ApiExceptionHandlerDouble();
+        $firstMessage = fake()->sentence();
+        $exception = ValidationException::withMessages([
+            'email' => [$firstMessage],
+        ]);
+
+        $response = $handler->renderApiException($exception);
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertSame($firstMessage, $data['message']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testValidationMessageFallsBackWhenConfigIsNotString(): void
+    {
+        config(['laravel-controller.validation.message' => ['bad']]);
+        $handler = new ApiExceptionHandlerDouble();
+        $exception = ValidationException::withMessages([
+            'field' => [fake()->word()],
+        ]);
+
+        $response = $handler->renderApiException($exception);
+        $data = $this->jsonPayload($response);
+
+        self::assertSame('Unprocessable Entity', $data['message']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItHandlesAuthenticationException(): void
+    {
+        $handler = new ApiExceptionHandlerDouble();
+        $message = fake()->sentence();
+        $response = $handler->renderApiException(new AuthenticationException($message));
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(401, $response->getStatusCode());
+        self::assertSame($message, $data['message']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItHandlesAuthorizationException(): void
+    {
+        $handler = new ApiExceptionHandlerDouble();
+        $message = fake()->sentence();
+        $response = $handler->renderApiException(new AuthorizationException($message));
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame($message, $data['message']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItHandlesHttpException(): void
+    {
+        $handler = new ApiExceptionHandlerDouble();
+        $message = fake()->sentence();
+        $response = $handler->renderApiException(new HttpException(418, $message));
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(418, $response->getStatusCode());
+        self::assertSame($message, $data['message']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testItHandlesGenericException(): void
+    {
+        $handler = new ApiExceptionHandlerDouble();
         $response = $handler->renderApiException(new Exception('Boom'));
 
-        $this->assertEquals(500, $response->getStatusCode());
+        self::assertSame(500, $response->getStatusCode());
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     * @throws OverflowException
+     */
+    public function testGenericExceptionExposesMessageWhenDebugEnabled(): void
+    {
+        config(['app.debug' => true]);
+        $handler = new ApiExceptionHandlerDouble();
+        $message = fake()->unique()->sentence();
+        $response = $handler->renderApiException(new Exception($message));
+        $data = $this->jsonPayload($response);
+
+        self::assertSame(500, $response->getStatusCode());
+        self::assertSame($message, $data['message']);
     }
 }

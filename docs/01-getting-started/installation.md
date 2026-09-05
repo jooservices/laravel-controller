@@ -3,8 +3,10 @@
 Install JOOservices Laravel Controller with Composer:
 
 ```bash
-composer require jooservices/laravel-controller
+composer require jooservices/laravel-controller:^4.0
 ```
+
+Migrating from v1.x: read [UPGRADE-4.0.md](../../UPGRADE-4.0.md).
 
 To customize package behavior, publish the configuration file:
 

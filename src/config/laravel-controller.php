@@ -5,13 +5,26 @@ declare(strict_types=1);
 return [
     /*
     |--------------------------------------------------------------------------
+    | Response Profile
+    |--------------------------------------------------------------------------
+    |
+    | "envelope" (default): JOOservices success/error JSON envelope.
+    | "problem+json": errors use RFC 7807 Problem Details (Content-Type
+    | application/problem+json). Success responses keep the default envelope
+    | and application/json. Explicit response_formatter still wins when set.
+    |
+    */
+    'response_profile' => 'envelope',
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Response Formatter
     |--------------------------------------------------------------------------
     |
     | Provide a class name that implements
     | JOOservices\LaravelController\Contracts\ResponseFormatter to fully
-    | control the final JSON envelope. When null, the package uses its default
-    | standardized response shape and key mapping.
+    | control the final JSON envelope. When null, the package uses the
+    | formatter implied by response_profile (or the default envelope).
     |
     */
     'response_formatter' => null,
@@ -25,6 +38,26 @@ return [
         'meta' => 'meta',
         'trace_id' => 'trace_id',
         'warnings' => 'warnings',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Meta Headers (echo into envelope meta)
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, present request headers are copied into meta (echo only —
+    | no idempotency storage or rate-limit enforcement).
+    |
+    */
+    'meta_headers' => [
+        'enabled' => true,
+        'idempotency' => 'Idempotency-Key',
+        'rate_limit' => [
+            'limit' => 'X-RateLimit-Limit',
+            'remaining' => 'X-RateLimit-Remaining',
+            'reset' => 'X-RateLimit-Reset',
+        ],
+        'retry_after' => 'Retry-After',
     ],
 
     /*
@@ -102,13 +135,16 @@ return [
     | version, environment, or maintenance flag so clients can adapt (e.g.
     | show "API under maintenance" or "please upgrade client").
     | Optional "checks" run health checks (database, cache, queue) with timeout.
+    | Mixed list: built-in names and/or class-strings implementing
+    | JOOservices\LaravelController\Contracts\StatusHealthCheck, e.g.
+    | ['database', 'cache', App\Health\RedisCheck::class]
     |
     */
     'status' => [
         'include_version' => true,
         'include_environment' => true,
         'include_maintenance' => true,
-        'checks' => [], // e.g. ['database', 'cache', 'queue'] with optional timeout_seconds per check
+        'checks' => [], // e.g. ['database', 'cache', 'queue'] and/or StatusHealthCheck class-strings
         'checks_timeout_seconds' => 5,
     ],
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace JOOservices\LaravelController\Traits;
 
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +12,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use InvalidArgumentException;
 use JOOservices\LaravelController\Contracts\ResponseFormatter;
+use JOOservices\LaravelController\Formatters\ProblemDetailsFormatter;
+use JOOservices\LaravelController\OpenApi\EnvelopeContract;
 use JsonSerializable;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\UuidV4;
@@ -77,6 +80,51 @@ trait HasApiResponses
         mixed $errors = null,
     ): JsonResponse {
         return $this->error($message, $code, $errors);
+    }
+
+    /**
+     * Return an RFC 7807 Problem Details response (application/problem+json).
+     *
+     * @throws UnexpectedValueException
+     */
+    public function respondWithProblem(
+        string $title,
+        int $status,
+        ?string $detail = null,
+        mixed $errors = null,
+        ?string $type = null,
+    ): JsonResponse {
+        $type ??= 'https://jooservices.dev/problems/http-' . $status;
+
+        $meta = [
+            'problem_type' => $type,
+        ];
+
+        if ($detail !== null && $detail !== '') {
+            $meta['problem_detail'] = $detail;
+        }
+
+        $instance = request()->getRequestUri();
+        if (is_string($instance) && $instance !== '') {
+            $meta['problem_instance'] = $instance;
+        }
+
+        $previousFormatter = config('laravel-controller.response_formatter');
+        $previousProfile = config('laravel-controller.response_profile');
+
+        config([
+            'laravel-controller.response_formatter' => ProblemDetailsFormatter::class,
+            'laravel-controller.response_profile' => EnvelopeContract::PROFILE_PROBLEM_JSON,
+        ]);
+
+        try {
+            return $this->formatResponse(false, $status, $title, null, $errors, $meta);
+        } finally {
+            config([
+                'laravel-controller.response_formatter' => $previousFormatter,
+                'laravel-controller.response_profile' => $previousProfile,
+            ]);
+        }
     }
 
     /**
@@ -256,9 +304,12 @@ trait HasApiResponses
         $data = $this->normalizeResponseValue($data);
         $errors = $this->normalizeResponseValue($errors);
         $meta = $this->normalizeStringKeyedArray($meta);
+        $meta = $this->mergeMetaHeaders($meta);
+
+        $effectiveSuccess = $this->isEffectiveSuccess($success, $code);
 
         $payload = $this->resolveResponsePayload([
-            'success' => $this->isEffectiveSuccess($success, $code),
+            'success' => $effectiveSuccess,
             'code' => $code,
             'message' => $message,
             'data' => $data,
@@ -269,7 +320,117 @@ trait HasApiResponses
             'keys' => $this->configuredResponseKeys(),
         ]);
 
-        return response()->json($payload, $code);
+        $response = response()->json($payload, $code);
+
+        if (! $effectiveSuccess && $this->usesProblemJsonProfile()) {
+            $response->headers->set('Content-Type', EnvelopeContract::CONTENT_TYPE_PROBLEM_JSON);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Echo configured request headers into meta when present.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array<string, mixed>
+     */
+    protected function mergeMetaHeaders(array $meta): array
+    {
+        $config = config('laravel-controller.meta_headers');
+
+        if (! is_array($config) || ($config['enabled'] ?? true) !== true) {
+            return $meta;
+        }
+
+        $meta = $this->mergeIdempotencyMetaHeader($meta, $config);
+        $meta = $this->mergeRateLimitMetaHeaders($meta, $config);
+        $meta = $this->mergeRetryAfterMetaHeader($meta, $config);
+
+        return $meta;
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @param  array<mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function mergeIdempotencyMetaHeader(array $meta, array $config): array
+    {
+        $idempotencyHeader = $config['idempotency'] ?? 'Idempotency-Key';
+        if (! is_string($idempotencyHeader) || $idempotencyHeader === '') {
+            return $meta;
+        }
+
+        $idempotencyKey = request()->header($idempotencyHeader);
+        if (is_string($idempotencyKey) && $idempotencyKey !== '') {
+            $meta['idempotency_key'] = $idempotencyKey;
+        }
+
+        return $meta;
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @param  array<mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function mergeRateLimitMetaHeaders(array $meta, array $config): array
+    {
+        $rateLimit = $config['rate_limit'] ?? [];
+        if (! is_array($rateLimit)) {
+            return $meta;
+        }
+
+        $rateMeta = [];
+        foreach (['limit', 'remaining', 'reset'] as $field) {
+            $headerName = $rateLimit[$field] ?? null;
+            if (! is_string($headerName) || $headerName === '') {
+                continue;
+            }
+            $value = request()->header($headerName);
+            if (is_string($value) && $value !== '') {
+                $rateMeta[$field] = $value;
+            }
+        }
+
+        if ($rateMeta !== []) {
+            $meta['rate_limit'] = $rateMeta;
+        }
+
+        return $meta;
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @param  array<mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function mergeRetryAfterMetaHeader(array $meta, array $config): array
+    {
+        $retryAfterHeader = $config['retry_after'] ?? 'Retry-After';
+        if (! is_string($retryAfterHeader) || $retryAfterHeader === '') {
+            return $meta;
+        }
+
+        $retryAfter = request()->header($retryAfterHeader);
+        if (is_string($retryAfter) && $retryAfter !== '') {
+            $meta['retry_after'] = $retryAfter;
+        }
+
+        return $meta;
+    }
+
+    protected function usesProblemJsonProfile(): bool
+    {
+        $formatterClass = config('laravel-controller.response_formatter');
+        if (is_string($formatterClass) && $formatterClass === ProblemDetailsFormatter::class) {
+            return true;
+        }
+
+        $profile = config('laravel-controller.response_profile', EnvelopeContract::PROFILE_ENVELOPE);
+
+        return $profile === EnvelopeContract::PROFILE_PROBLEM_JSON;
     }
 
     /**
@@ -401,6 +562,13 @@ trait HasApiResponses
     protected function resolveResponsePayload(array $response): array
     {
         $formatterClass = config('laravel-controller.response_formatter');
+
+        if (
+            (! is_string($formatterClass) || $formatterClass === '')
+            && config('laravel-controller.response_profile') === EnvelopeContract::PROFILE_PROBLEM_JSON
+        ) {
+            $formatterClass = ProblemDetailsFormatter::class;
+        }
 
         if (is_string($formatterClass) && $formatterClass !== '') {
             $formatter = app($formatterClass);
@@ -578,21 +746,47 @@ trait HasApiResponses
     }
 
     /**
-     * Return a cursor-paginated response. Meta has cursor, next_cursor, has_more.
+     * Return a cursor-paginated response.
+     * Accepts Laravel CursorPaginator (auto-extracts items/cursors) or an iterable API.
+     * Pagination fields are nested under meta.pagination (v4).
+     * For the iterable form, has_more is true when next_cursor is non-null.
      *
-     * @param  iterable<mixed>  $items
-     * @param  string|int|null  $cursor  Current cursor (opaque token or id).
+     * @param  iterable<mixed>|CursorPaginator<int, mixed>  $items
+     * @param  string|int|null  $cursor  Current cursor (opaque token or id). Ignored when $items is CursorPaginator.
      * @param  string|int|null  $nextCursor  Cursor for next page, or null if no next page.
      * @param  string|null  $resourceClass
      * @throws UnexpectedValueException
      */
     public function respondWithCursorPagination(
-        iterable $items,
-        $cursor,
-        $nextCursor,
-        bool $hasMore,
+        iterable | CursorPaginator $items,
+        mixed $cursor = null,
+        mixed $nextCursor = null,
         ?string $resourceClass = null,
+        string $message = 'Success',
+        int $code = Response::HTTP_OK,
     ): JsonResponse {
+        $prevCursor = null;
+        $perPage = null;
+        $links = null;
+        $hasMore = $nextCursor !== null;
+
+        if ($items instanceof CursorPaginator) {
+            $paginator = $items;
+            $cursor = $this->encodeCursorValue($paginator->cursor());
+            $nextCursor = $this->encodeCursorValue($paginator->nextCursor());
+            $prevCursor = $this->encodeCursorValue($paginator->previousCursor());
+            $hasMore = $paginator->hasMorePages();
+            $perPage = $paginator->perPage();
+            $items = $paginator->items();
+
+            if (config('laravel-controller.pagination_links', true) === true) {
+                $links = [
+                    'prev' => $paginator->previousPageUrl(),
+                    'next' => $paginator->nextPageUrl(),
+                ];
+            }
+        }
+
         $items = is_array($items) ? $items : iterator_to_array($items);
         $this->assertApiResourceClass($resourceClass);
 
@@ -601,17 +795,57 @@ trait HasApiResponses
             $items = $resourceClass::collection($items)->resolve();
         }
 
-        $meta = [
+        $pagination = [
             'cursor' => $cursor,
             'next_cursor' => $nextCursor,
             'has_more' => $hasMore,
         ];
 
-        return $this->success($items, 'Success', Response::HTTP_OK, $meta);
+        if ($prevCursor !== null) {
+            $pagination['prev_cursor'] = $prevCursor;
+        }
+
+        if ($perPage !== null) {
+            $pagination['per_page'] = $perPage;
+        }
+
+        $meta = [
+            'pagination' => $pagination,
+        ];
+
+        if (is_array($links)) {
+            $meta['links'] = $links;
+        }
+
+        return $this->success($items, $message, $code, $meta);
     }
 
     /**
-     * Return an offset-paginated response (offset/limit style). Meta has offset, limit, total, has_more.
+     * Encode a Laravel Cursor object or return scalar cursors as-is.
+     */
+    protected function encodeCursorValue(mixed $cursor): string | int | null
+    {
+        if ($cursor === null) {
+            return null;
+        }
+
+        if (is_object($cursor) && method_exists($cursor, 'encode')) {
+            /** @var mixed $encoded */
+            $encoded = $cursor->encode();
+
+            return is_string($encoded) || is_int($encoded) ? $encoded : null;
+        }
+
+        if (is_string($cursor) || is_int($cursor)) {
+            return $cursor;
+        }
+
+        return null;
+    }
+
+    /**
+     * Return an offset-paginated response (offset/limit style).
+     * Pagination fields are nested under meta.pagination (v4).
      *
      * @param  iterable<mixed>  $items
      * @param  string|null  $resourceClass
@@ -623,6 +857,8 @@ trait HasApiResponses
         int $limit,
         int $total,
         ?string $resourceClass = null,
+        string $message = 'Success',
+        int $code = Response::HTTP_OK,
     ): JsonResponse {
         $items = is_array($items) ? $items : iterator_to_array($items);
         $this->assertApiResourceClass($resourceClass);
@@ -633,24 +869,15 @@ trait HasApiResponses
         }
 
         $meta = [
-            'offset' => $offset,
-            'limit' => $limit,
-            'total' => $total,
-            'has_more' => $offset + count($items) < $total,
+            'pagination' => [
+                'offset' => $offset,
+                'limit' => $limit,
+                'total' => $total,
+                'has_more' => $offset + count($items) < $total,
+            ],
         ];
 
-        return $this->success($items, 'Success', Response::HTTP_OK, $meta);
-    }
-
-    /**
-     * @deprecated Use respondWithPagination() instead. Will be removed in the next major version.
-     *
-     * @param  string|null  $resourceClass
-     * @throws UnexpectedValueException
-     */
-    public function paginated(mixed $paginator, ?string $resourceClass = null): JsonResponse
-    {
-        return $this->respondWithPagination($paginator, $resourceClass);
+        return $this->success($items, $message, $code, $meta);
     }
 
     /**

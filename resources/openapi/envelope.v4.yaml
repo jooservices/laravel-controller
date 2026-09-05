@@ -1,0 +1,140 @@
+openapi: 3.1.0
+info:
+  title: JOOservices Laravel Controller envelope schemas
+  version: 4.0.0
+  description: >
+    Stable response schemas for jooservices/laravel-controller v4.
+    Reference from your application OpenAPI with a path $ref, for example:
+    `$ref: 'vendor/jooservices/laravel-controller/resources/openapi/envelope.v4.yaml#/components/schemas/ApiSuccessEnvelope'`
+
+components:
+  schemas:
+    ApiSuccessEnvelope:
+      type: object
+      required: [success, code, message, data, meta, errors, trace_id]
+      properties:
+        success:
+          type: boolean
+          const: true
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+        data: {}
+        meta:
+          type: object
+          additionalProperties: true
+        errors:
+          nullable: true
+        trace_id:
+          type: string
+          format: uuid
+        warnings:
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: object
+              additionalProperties:
+                type: string
+
+    ApiErrorEnvelope:
+      type: object
+      required: [success, code, message, data, meta, errors, trace_id]
+      properties:
+        success:
+          type: boolean
+          const: false
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+        data:
+          nullable: true
+        meta:
+          type: object
+          additionalProperties: true
+        errors: {}
+        trace_id:
+          type: string
+          format: uuid
+        warnings:
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: object
+              additionalProperties:
+                type: string
+
+    ApiProblemDetails:
+      type: object
+      description: RFC 7807 Problem Details (application/problem+json)
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://jooservices.dev/problems/http-422
+        title:
+          type: string
+        status:
+          type: integer
+          example: 422
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        errors:
+          description: Extension — validation or structured error payload
+        trace_id:
+          type: string
+          format: uuid
+          description: Extension — correlation id
+
+    PaginationMeta:
+      type: object
+      description: Length-aware pagination under meta.pagination
+      required: [current_page, total, per_page, last_page]
+      properties:
+        current_page:
+          type: integer
+        total:
+          type: integer
+        per_page:
+          type: integer
+        last_page:
+          type: integer
+
+    CursorPaginationMeta:
+      type: object
+      description: Cursor pagination under meta.pagination
+      required: [has_more]
+      properties:
+        cursor:
+          nullable: true
+        next_cursor:
+          nullable: true
+        prev_cursor:
+          nullable: true
+        per_page:
+          type: integer
+        has_more:
+          type: boolean
+
+    OffsetPaginationMeta:
+      type: object
+      description: Offset/limit pagination under meta.pagination
+      required: [offset, limit, total, has_more]
+      properties:
+        offset:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        has_more:
+          type: boolean

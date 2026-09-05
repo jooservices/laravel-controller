@@ -13,7 +13,8 @@
 11. Run `composer test:coverage`.
 12. Run `composer check`.
 13. Run `composer ci`.
-14. Review README, docs, examples, AGENTS, skills, and CI assumptions.
-15. Open the release PR from `release/<version>` to `master`.
-16. Tag only after the release PR has passed CI and merged to `master`.
-17. Merge `master` back into `develop` after the release.
+14. Review README, CHANGELOG, UPGRADE guide (major bumps), docs, examples, AGENTS, skills, and CI assumptions.
+15. Confirm README version badge and OpenAPI `info.version` match the release tag.
+16. Open the release PR from `release/<version>` to `master`.
+17. Tag only after the release PR has passed CI and merged to `master` (annotated tag `vX.Y.Z`).
+18. Merge `master` back into `develop` after the release.

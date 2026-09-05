@@ -1,22 +1,22 @@
 # Backward Compatibility
 
-Backward-compatible helpers remain available:
+## v4 breaking removals
 
-- `success()`
-- `error()`
-- `created()`
-- `noContent()`
-- `respondWithItem()`
-- `respondWithCollection()`
-- `paginated()`
+- `paginated()` — use `respondWithPagination()`
+- Flat cursor/offset fields on `meta` — use `meta.pagination.*`
+- `envelope_204` — `noContent()` is always empty body
 
-New code should prefer:
+See [UPGRADE-4.0.md](../../UPGRADE-4.0.md).
 
-- `respondWithData()`
-- `respondWithResource()`
-- `respondWithResourceCollection()`
-- `respondWithPagination()`
-- `respondWithError()`
-- `respondNoContent()`
+## Still available (prefer newer aliases where noted)
+
+- `success()` / prefer `respondWithData()`
+- `error()` / prefer `respondWithError()`
+- `created()`, `accepted()`, `conflict()`, `gone()`, …
+- `noContent()` / prefer `respondNoContent()`
+- `respondWithItem()`, `respondWithCollection()`
+- `respondWithResource()`, `respondWithResourceCollection()`
+- `respondWithPagination()`, `respondWithCursorPagination()`, `respondWithOffsetPagination()`
+- `respondWithProblem()` (v4)
 
 Do not change the default envelope keys, status codes, or trace ID behavior without tests and documentation.

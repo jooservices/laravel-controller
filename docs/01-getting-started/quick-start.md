@@ -2,6 +2,8 @@
 
 Extend `JOOservices\LaravelController\Http\Controllers\BaseApiController` in API controllers and keep application logic in services.
 
+For v4 contracts (Problem Details, OpenAPI schemas, `meta.pagination`), see [UPGRADE-4.0.md](../../UPGRADE-4.0.md) and the [user guide](../02-user-guide/response-envelopes.md).
+
 ```php
 <?php
 

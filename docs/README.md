@@ -2,7 +2,7 @@
 
 This documentation covers the public API surface, expected response contracts, and contributor workflow for the **JOOservices Laravel Controller** package.
 
-The package name is `jooservices/laravel-controller`. The PHP namespace is `JOOservices\LaravelController\`.
+The package name is `jooservices/laravel-controller`. The PHP namespace is `JOOservices\LaravelController\`. Current major: **v4**.
 
 ## Recommended reading order
 
@@ -10,7 +10,8 @@ The package name is `jooservices/laravel-controller`. The PHP namespace is `JOOs
 2. [Quick Start](./01-getting-started/quick-start.md)
 3. [Response Envelopes](./02-user-guide/response-envelopes.md)
 4. [Configuration](./02-user-guide/configuration.md)
-5. [Response Reference](./02-user-guide/response-reference.md)
+5. [Problem Details](./02-user-guide/problem-details.md) / [OpenAPI Contract](./02-user-guide/openapi-contract.md)
+6. [Upgrade to v4](../UPGRADE-4.0.md) (when migrating from v1.x)
 
 ## Documentation map
 
@@ -29,6 +30,8 @@ The package name is `jooservices/laravel-controller`. The PHP namespace is `JOOs
 ### User guide
 
 - [Response Envelopes](./02-user-guide/response-envelopes.md)
+- [Problem Details](./02-user-guide/problem-details.md)
+- [OpenAPI Contract](./02-user-guide/openapi-contract.md)
 - [Pagination and Status](./02-user-guide/pagination-and-status.md)
 - [Configuration](./02-user-guide/configuration.md)
 - [Response Reference](./02-user-guide/response-reference.md)
@@ -45,6 +48,7 @@ The package name is `jooservices/laravel-controller`. The PHP namespace is `JOOs
 - [Coding Standards](./04-development/coding-standards.md)
 - [Testing](./04-development/testing.md)
 - [CI/CD](./04-development/ci-cd.md)
+- [Release Process](./04-development/release-process.md)
 - [AI Skills](./04-development/ai-skills.md)
 
 ### Maintenance

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace JOOservices\LaravelController\Tests\Support;
 
+use Illuminate\Contracts\Container\BindingResolutionException;
 use JOOservices\LaravelController\Support\StatusHealthChecker;
 use Psr\SimpleCache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
 use RuntimeException;
@@ -16,6 +17,7 @@ final class SlowStatusHealthChecker extends StatusHealthChecker
     /**
      * @return array{ok: bool, message?: string}
      *
+     * @throws BindingResolutionException
      * @throws RuntimeException
      * @throws SimpleCacheInvalidArgumentException
      */

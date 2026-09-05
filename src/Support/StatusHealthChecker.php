@@ -5,14 +5,19 @@ declare(strict_types=1);
 namespace JOOservices\LaravelController\Support;
 
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use JOOservices\LaravelController\Contracts\StatusHealthCheck;
 use Psr\SimpleCache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
 use RuntimeException;
 use Throwable;
 
 /**
  * Runs readiness health probes for the status endpoint.
+ *
+ * Built-in names: database, cache, queue.
+ * Custom checks: class-strings implementing StatusHealthCheck (resolved via app()).
  */
 class StatusHealthChecker
 {
@@ -32,16 +37,18 @@ class StatusHealthChecker
 
         try {
             foreach ($checkNames as $name) {
+                $resultKey = $this->resultKeyFor($name);
+
                 if ($deadline > 0.0 && microtime(true) >= $deadline) {
-                    $results[$name] = ['ok' => false, 'message' => 'timeout'];
+                    $results[$resultKey] = ['ok' => false, 'message' => 'timeout'];
 
                     continue;
                 }
 
                 try {
-                    $results[$name] = $this->runOneCheck($name);
+                    $results[$resultKey] = $this->runOneCheck($name);
                 } catch (Throwable $exception) {
-                    $results[$name] = [
+                    $results[$resultKey] = [
                         'ok' => false,
                         'message' => $this->failureMessage($exception),
                     ];
@@ -73,6 +80,7 @@ class StatusHealthChecker
     /**
      * @return array{ok: bool, message?: string}
      *
+     * @throws BindingResolutionException
      * @throws RuntimeException
      * @throws SimpleCacheInvalidArgumentException
      */
@@ -82,8 +90,66 @@ class StatusHealthChecker
             'database' => $this->checkDatabase(),
             'cache' => $this->checkCache(),
             'queue' => $this->checkQueue(),
-            default => ['ok' => false, 'message' => 'unknown check'],
+            default => $this->runCustomCheck($name),
         };
+    }
+
+    protected function resultKeyFor(string $name): string
+    {
+        $lower = strtolower($name);
+
+        if (in_array($lower, ['database', 'cache', 'queue'], true)) {
+            return $lower;
+        }
+
+        if ($this->isCustomCheckClass($name)) {
+            try {
+                return $this->resolveCustomCheck($name)->name();
+            } catch (Throwable) {
+                return $name;
+            }
+        }
+
+        return $name;
+    }
+
+    /**
+     * @return array{ok: bool, message?: string}
+     *
+     * @throws BindingResolutionException
+     * @throws RuntimeException
+     */
+    protected function runCustomCheck(string $name): array
+    {
+        if (! $this->isCustomCheckClass($name)) {
+            return ['ok' => false, 'message' => 'unknown check'];
+        }
+
+        return $this->resolveCustomCheck($name)->check();
+    }
+
+    protected function isCustomCheckClass(string $name): bool
+    {
+        return class_exists($name) && is_a($name, StatusHealthCheck::class, true);
+    }
+
+    /**
+     * @throws BindingResolutionException
+     * @throws RuntimeException
+     */
+    protected function resolveCustomCheck(string $name): StatusHealthCheck
+    {
+        $check = app($name);
+
+        if (! $check instanceof StatusHealthCheck) {
+            throw new RuntimeException(sprintf(
+                'Health check [%s] must implement %s.',
+                $name,
+                StatusHealthCheck::class,
+            ));
+        }
+
+        return $check;
     }
 
     /**

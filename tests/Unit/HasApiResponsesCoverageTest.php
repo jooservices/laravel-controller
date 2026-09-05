@@ -6,6 +6,7 @@ namespace JOOservices\LaravelController\Tests\Unit;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use JOOservices\LaravelController\Formatters\ProblemDetailsFormatter;
 use JOOservices\LaravelController\OpenApi\EnvelopeContract;
@@ -105,13 +106,12 @@ final class HasApiResponsesCoverageTest extends TestCase
     /**
      * @throws UnexpectedValueException
      */
-    public function testRespondWithPaginationFallsBackForNonPaginator(): void
+    public function testRespondWithPaginationRejectsNonPaginator(): void
     {
-        $items = [fake()->word(), fake()->word()];
-        $response = $this->responses->respondWithPagination($items);
-        $data = $this->jsonPayload($response);
+        $this->expectException(UnexpectedValueException::class);
+        $this->expectExceptionMessage('respondWithPagination() requires a LengthAwarePaginator');
 
-        self::assertSame($items, $data['data']);
+        $this->responses->respondWithPagination([fake()->word(), fake()->word()]);
     }
 
     /**
@@ -134,6 +134,40 @@ final class HasApiResponsesCoverageTest extends TestCase
         /** @var list<array<string, mixed>> $rows */
         $rows = $data['data'];
         self::assertSame($name, $rows[0]['name']);
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public function testRespondWithPaginationSupportsSimplePaginatorWithResource(): void
+    {
+        $name = fake()->firstName();
+        $paginator = new Paginator(
+            [
+                ['id' => 1, 'name' => $name, 'internal_note' => 'secret'],
+                ['id' => 2, 'name' => 'next', 'internal_note' => 'secret'],
+            ],
+            1,
+            1,
+            ['path' => '/api/items'],
+        );
+
+        $response = $this->responses->respondWithPagination($paginator, FakeItemResource::class);
+        $data = $this->jsonPayload($response);
+
+        self::assertIsArray($data['data']);
+        /** @var list<array<string, mixed>> $rows */
+        $rows = $data['data'];
+        self::assertSame($name, $rows[0]['name']);
+        self::assertArrayNotHasKey('internal_note', $rows[0]);
+        self::assertIsArray($data['meta']);
+        /** @var array<string, mixed> $meta */
+        $meta = $data['meta'];
+        self::assertIsArray($meta['pagination']);
+        /** @var array<string, mixed> $pagination */
+        $pagination = $meta['pagination'];
+        self::assertTrue($pagination['has_more']);
+        self::assertArrayNotHasKey('total', $pagination);
     }
 
     /**

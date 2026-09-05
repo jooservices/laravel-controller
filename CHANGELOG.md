@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.1] - 2026-09-05
+
+### Fixed
+
+- `respondWithPagination()` supports simple `Paginator` and `CursorPaginator`, and rejects unrecognized inputs instead of returning raw data.
+- Single `JsonResource` responses preserve `additional()` / `with()` metadata in `meta`.
+- Health cache probes use unique keys/values, verify writes, and clean up after the probe.
+- Health checks that overrun the configured deadline are marked as timed out.
+- `NotFoundHttpException` wrapping `ModelNotFoundException` returns a public-safe message.
+
 ## [4.0.0] - 2026-09-05
 
 ### Added

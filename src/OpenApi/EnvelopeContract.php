@@ -28,6 +28,8 @@ final class EnvelopeContract
 
     public const SCHEMA_CURSOR_PAGINATION_META = 'CursorPaginationMeta';
 
+    public const SCHEMA_SIMPLE_PAGINATION_META = 'SimplePaginationMeta';
+
     public const SCHEMA_OFFSET_PAGINATION_META = 'OffsetPaginationMeta';
 
     public const OPENAPI_RELATIVE_PATH = 'resources/openapi/envelope.v4.yaml';

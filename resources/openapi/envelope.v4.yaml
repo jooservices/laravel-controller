@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: JOOservices Laravel Controller envelope schemas
-  version: 4.0.0
+  version: 4.0.1
   description: >
     Stable response schemas for jooservices/laravel-controller v4.
     Reference from your application OpenAPI with a path $ref, for example:
@@ -120,6 +120,18 @@ components:
           nullable: true
         prev_cursor:
           nullable: true
+        per_page:
+          type: integer
+        has_more:
+          type: boolean
+
+    SimplePaginationMeta:
+      type: object
+      description: Laravel simplePaginate() under meta.pagination (no total/last_page)
+      required: [current_page, per_page, has_more]
+      properties:
+        current_page:
+          type: integer
         per_page:
           type: integer
         has_more:

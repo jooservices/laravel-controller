@@ -5,13 +5,13 @@
 [![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=jooservices_laravel-controller&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=jooservices_laravel-controller)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/jooservices/laravel-controller/badge)](https://securityscorecards.dev/viewer/?uri=github.com/jooservices/laravel-controller)
 [![PHP Version](https://img.shields.io/badge/PHP-8.5%2B-blue.svg)](https://www.php.net/)
-[![Release](https://img.shields.io/badge/version-4.0.0-blue.svg)](CHANGELOG.md)
+[![Release](https://img.shields.io/badge/version-4.0.1-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Packagist Version](https://img.shields.io/packagist/v/jooservices/laravel-controller)](https://packagist.org/packages/jooservices/laravel-controller)
 
 **JOOservices Laravel Controller** is a Laravel API controller foundation for standardized JSON response envelopes, RFC 7807 Problem Details, OpenAPI envelope schemas, pagination metadata, status endpoints, trace IDs, and formatter-based response customization.
 
-Composer package: `jooservices/laravel-controller` — current line: **v4.0.0**. Upgrading from v1.x: see [UPGRADE-4.0.md](UPGRADE-4.0.md).
+Composer package: `jooservices/laravel-controller` — current line: **v4.0.1**. Upgrading from v1.x: see [UPGRADE-4.0.md](UPGRADE-4.0.md).
 
 ## Features
 
@@ -20,7 +20,7 @@ Composer package: `jooservices/laravel-controller` — current line: **v4.0.0**.
 - stable OpenAPI 3.1 envelope schemas (`resources/openapi/envelope.v4.yaml`)
 - Laravel `JsonResource` and `ResourceCollection` friendly response helpers
 - standardized response envelope with configurable keys
-- length-aware, cursor, and offset pagination helpers (`meta.pagination`)
+- length-aware, simple, cursor, and offset pagination helpers (`meta.pagination`)
 - echo of Idempotency-Key / rate-limit / Retry-After headers into `meta` (no storage)
 - trace ID support through a configurable request header
 - optional status endpoint with pluggable `StatusHealthCheck` probes

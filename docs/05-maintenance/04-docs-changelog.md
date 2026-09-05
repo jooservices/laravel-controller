@@ -15,6 +15,12 @@ Required sync points:
 
 Use the canonical product name **JOOservices Laravel Controller** in prose. Use `jooservices/laravel-controller` only for the Composer package identifier.
 
+## 4.0.1
+
+- Documented `respondWithPagination()` support for simple `Paginator` / `CursorPaginator` and rejection of unrecognized inputs.
+- OpenAPI: added `SimplePaginationMeta`; bumped artifact `info.version` to `4.0.1`.
+- Noted safer health probes and wrapped `ModelNotFoundException` handling in the changelog.
+
 ## 4.0.0
 
 - Added Problem Details, OpenAPI contract, meta headers, and pluggable health-check docs.

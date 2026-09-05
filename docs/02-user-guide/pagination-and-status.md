@@ -5,9 +5,11 @@
 Use these helpers when returning resource collections:
 
 - `respondWithCollection($items, ResourceClass::class)`
-- `respondWithPagination($paginator, ResourceClass::class)` — LengthAwarePaginator
+- `respondWithPagination($paginator, ResourceClass::class)` — LengthAwarePaginator, simple `Paginator`, or `CursorPaginator`
 - `respondWithCursorPagination($itemsOrCursorPaginator, …)` — iterable API or Laravel `CursorPaginator`
 - `respondWithOffsetPagination($items, $offset, $limit, $total, ResourceClass::class)`
+
+Unrecognized inputs to `respondWithPagination()` throw `UnexpectedValueException`; they are never returned as raw `data`.
 
 All three pagination styles nest fields under **`meta.pagination`** (v4). When `pagination_links` is enabled, HAL-style navigation links are under `meta.links`.
 
@@ -27,6 +29,27 @@ All three pagination styles nest fields under **`meta.pagination`** (v4). When `
       "last": "...",
       "prev": null,
       "next": "..."
+    }
+  }
+}
+```
+
+### Simple pagination example (`simplePaginate()`)
+
+```php
+return $this->respondWithPagination(
+    paginator: $users->simplePaginate(15),
+    resourceClass: UserResource::class,
+);
+```
+
+```json
+{
+  "meta": {
+    "pagination": {
+      "current_page": 1,
+      "per_page": 15,
+      "has_more": true
     }
   }
 }

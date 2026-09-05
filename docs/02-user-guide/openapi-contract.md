@@ -19,6 +19,7 @@ PHP constants: `JOOservices\LaravelController\OpenApi\EnvelopeContract`
 | `SCHEMA_API_PROBLEM_DETAILS` | `ApiProblemDetails` |
 | `SCHEMA_PAGINATION_META` | `PaginationMeta` |
 | `SCHEMA_CURSOR_PAGINATION_META` | `CursorPaginationMeta` |
+| `SCHEMA_SIMPLE_PAGINATION_META` | `SimplePaginationMeta` |
 | `SCHEMA_OFFSET_PAGINATION_META` | `OffsetPaginationMeta` |
 | `CONTENT_TYPE_PROBLEM_JSON` | `application/problem+json` |
 | `OPENAPI_RELATIVE_PATH` | `resources/openapi/envelope.v4.yaml` |
@@ -35,4 +36,4 @@ components:
 
 Adjust the `$ref` path to match how your OpenAPI bundler resolves Composer vendor files.
 
-Pagination fields for length-aware, cursor, and offset helpers live under `meta.pagination` and match the `*PaginationMeta` schemas.
+Pagination fields for length-aware, simple, cursor, and offset helpers live under `meta.pagination` and match the `*PaginationMeta` schemas. Artifact `info.version` tracks the package release line (currently **4.0.1**).

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use JOOservices\LaravelController\Contracts\StatusHealthCheck;
 use Psr\SimpleCache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
+use Random\RandomException;
 use RuntimeException;
 use Throwable;
 
@@ -37,22 +38,7 @@ class StatusHealthChecker
 
         try {
             foreach ($checkNames as $name) {
-                $resultKey = $this->resultKeyFor($name);
-
-                if ($deadline > 0.0 && microtime(true) >= $deadline) {
-                    $results[$resultKey] = ['ok' => false, 'message' => 'timeout'];
-
-                    continue;
-                }
-
-                try {
-                    $results[$resultKey] = $this->runOneCheck($name);
-                } catch (Throwable $exception) {
-                    $results[$resultKey] = [
-                        'ok' => false,
-                        'message' => $this->failureMessage($exception),
-                    ];
-                }
+                $results[$this->resultKeyFor($name)] = $this->runNamedCheck($name, $deadline);
             }
         } finally {
             if (is_string($prevTimeout)) {
@@ -61,6 +47,31 @@ class StatusHealthChecker
         }
 
         return $results;
+    }
+
+    /**
+     * @return array{ok: bool, message?: string}
+     */
+    protected function runNamedCheck(string $name, float $deadline): array
+    {
+        if ($deadline > 0.0 && microtime(true) >= $deadline) {
+            return ['ok' => false, 'message' => 'timeout'];
+        }
+
+        try {
+            $result = $this->runOneCheck($name);
+        } catch (Throwable $exception) {
+            $result = [
+                'ok' => false,
+                'message' => $this->failureMessage($exception),
+            ];
+        }
+
+        if ($deadline > 0.0 && microtime(true) > $deadline) {
+            return ['ok' => false, 'message' => 'timeout'];
+        }
+
+        return $result;
     }
 
     /**
@@ -83,6 +94,7 @@ class StatusHealthChecker
      * @throws BindingResolutionException
      * @throws RuntimeException
      * @throws SimpleCacheInvalidArgumentException
+     * @throws RandomException
      */
     protected function runOneCheck(string $name): array
     {
@@ -168,13 +180,23 @@ class StatusHealthChecker
      * @return array{ok: bool, message?: string}
      *
      * @throws SimpleCacheInvalidArgumentException
+     * @throws RandomException
      */
     protected function checkCache(): array
     {
-        $key = 'laravel_controller_health';
+        $key = 'laravel_controller_health_' . bin2hex(random_bytes(8));
+        $value = bin2hex(random_bytes(8));
         $cache = app(CacheRepository::class);
-        $cache->put($key, 1, 10);
-        if ($cache->get($key) !== 1) {
+
+        $written = $cache->put($key, $value, 10);
+        if ($written === false) {
+            return ['ok' => false, 'message' => 'write failed'];
+        }
+
+        $read = $cache->get($key);
+        $cache->forget($key);
+
+        if ($read !== $value) {
             return ['ok' => false, 'message' => 'read/write failed'];
         }
 

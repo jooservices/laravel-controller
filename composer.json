@@ -69,6 +69,7 @@
     "scripts": {
         "test": "phpunit --no-coverage",
         "test:coverage": "phpunit --coverage-html coverage --coverage-clover coverage.xml",
+        "coverage:check": "php tools/coverage-enforce.php coverage.xml",
         "lint:pint": "pint --test",
         "lint:pint:fix": "pint",
         "lint:cs": "php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff --sequential",
@@ -93,7 +94,8 @@
         ],
         "ci": [
             "@lint",
-            "@test:coverage"
+            "@test:coverage",
+            "@coverage:check"
         ],
         "post-install-cmd": "captainhook install --force --skip-existing",
         "post-update-cmd": "captainhook install --force --skip-existing"

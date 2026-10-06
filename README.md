@@ -6,9 +6,9 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/jooservices/laravel-controller/badge)](https://securityscorecards.dev/viewer/?uri=github.com/jooservices/laravel-controller)
 [![PHP Version](https://img.shields.io/badge/PHP-8.5%2B-blue.svg)](https://www.php.net/)
 [![GitHub Release](https://img.shields.io/github/v/release/jooservices/laravel-controller?display_name=tag)](https://github.com/jooservices/laravel-controller/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Packagist Version](https://img.shields.io/packagist/v/jooservices/laravel-controller)](https://packagist.org/packages/jooservices/laravel-controller)
 [![Total Downloads](https://img.shields.io/packagist/dt/jooservices/laravel-controller)](https://packagist.org/packages/jooservices/laravel-controller)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **JOOservices Laravel Controller** is a Laravel API controller foundation for standardized JSON response envelopes, RFC 7807 Problem Details, OpenAPI envelope schemas, pagination metadata, status endpoints, trace IDs, and formatter-based response customization.
 
@@ -29,13 +29,18 @@ Composer package: `jooservices/laravel-controller` — current line: **v4.0.1**.
 - optional exception response helper for common Laravel exceptions
 - read-only `php artisan laravel-controller:doctor` diagnostics
 
+## Requirements
+
+- PHP `^8.5`
+- Laravel 12 or 13 (`illuminate/*` `^12.0` or `^13.0`)
+
 ## Installation
 
 ```bash
 composer require jooservices/laravel-controller:^4.0
 ```
 
-## Publish Config
+## Publish Configuration
 
 ```bash
 php artisan vendor:publish --provider="JOOservices\LaravelController\Providers\LaravelControllerServiceProvider" --tag="config"
@@ -47,7 +52,7 @@ Optional translations:
 php artisan vendor:publish --provider="JOOservices\LaravelController\Providers\LaravelControllerServiceProvider" --tag="laravel-controller-lang"
 ```
 
-## Quick Start
+## Quick start
 
 Use the package at the controller boundary. Keep request validation, business logic, and persistence in your application layers:
 
@@ -75,7 +80,7 @@ final class UserController extends BaseApiController
 }
 ```
 
-## Standard Architecture Usage
+### Standard Architecture Usage
 
 Recommended flow:
 
@@ -86,7 +91,7 @@ Model / entity / data object -> Laravel Resource -> API response envelope -> Jso
 
 Laravel Resource remains the presentation transformer. JOOservices Laravel Controller wraps the transformed payload in the API response envelope.
 
-## Response Envelope Example
+### Response Envelope Example
 
 ```json
 {
@@ -100,7 +105,7 @@ Laravel Resource remains the presentation transformer. JOOservices Laravel Contr
 }
 ```
 
-## Resource Example
+### Resource Example
 
 ```php
 public function show(UserShowRequest $request, UserService $users): JsonResponse
@@ -114,7 +119,7 @@ public function show(UserShowRequest $request, UserService $users): JsonResponse
 
 DTOs, `Arrayable`, `JsonSerializable`, and objects with `toArray()` may be accepted as input data, but they do not replace Laravel Resources as the presentation layer.
 
-## Pagination Example
+### Pagination Example
 
 ```php
 public function index(UserIndexRequest $request, UserService $users): JsonResponse
@@ -129,7 +134,7 @@ public function index(UserIndexRequest $request, UserService $users): JsonRespon
 
 Cursor and offset helpers nest fields under `meta.pagination`. You may pass a Laravel `CursorPaginator` directly to `respondWithCursorPagination()`.
 
-## Error Response Example
+### Error Response Example
 
 ```php
 public function archive(UserArchiveRequest $request, UserService $users): JsonResponse
@@ -150,7 +155,7 @@ public function archive(UserArchiveRequest $request, UserService $users): JsonRe
 
 For Problem Details, see [docs/02-user-guide/problem-details.md](docs/02-user-guide/problem-details.md) or set `response_profile` to `problem+json`.
 
-## Status Endpoint
+### Status Endpoint
 
 When package routes are enabled, the status endpoint is available under the configured prefix.
 Without health checks it is a liveness probe (HTTP 200). With `status.checks` configured it acts as readiness: any failed check returns HTTP 503 and `status: unavailable`.
@@ -169,7 +174,7 @@ php artisan laravel-controller:doctor
 php artisan laravel-controller:doctor --json
 ```
 
-## Custom Formatter
+### Custom Formatter
 
 ```php
 <?php
@@ -194,7 +199,7 @@ final class ApiResponseFormatter implements ResponseFormatter
 }
 ```
 
-## Configuration
+### Configuration
 
 Important config keys:
 
@@ -213,7 +218,9 @@ Important config keys:
 - `pagination_links`
 - `item_links`
 
-## Current Limitations And Non-Goals
+## Design notes
+
+### Scope and limitations
 
 This package is:
 
@@ -238,7 +245,9 @@ This package is not:
 ## Documentation
 
 - [Documentation Hub](docs/README.md)
+- [Changelog](CHANGELOG.md)
 - [Upgrade to v4](UPGRADE-4.0.md)
+- [Workflows](WORKFLOWS.md)
 - [Architecture](docs/00-architecture/01-project-overview.md)
 - [Getting Started](docs/01-getting-started/quick-start.md)
 - [User Guide](docs/02-user-guide/response-envelopes.md)
@@ -249,30 +258,34 @@ This package is not:
 - [Release Process](docs/04-development/release-process.md)
 - [Maintenance](docs/05-maintenance/01-risks-legacy-and-gaps.md)
 
-## AI Contributor Support
+### AI contributor support
 
 - [AGENTS.md](AGENTS.md)
 - [CLAUDE.md](CLAUDE.md)
 - [AI Skills Map](ai/skills/README.md)
 - [AI Skills Usage Guide](ai/skills/USAGE.md)
 
-## Development Commands
+## Development
 
 ```bash
 composer lint
-composer lint:all
 composer lint:fix
 composer test
 composer test:coverage
+composer coverage:check
 composer check
 composer ci
 ```
 
 Prefer Docker (`docker compose run --rm php …`) when host PHP is not 8.5.
 
-## Security And Contributing
+## Community
 
-Use GitHub issues for bug reports and security coordination unless a dedicated security policy is added. See [CONTRIBUTING.md](CONTRIBUTING.md).
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Support](SUPPORT.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Governance](GOVERNANCE.md)
 
 ## License
 

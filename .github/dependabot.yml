@@ -12,7 +12,6 @@ updates:
       default-days: 7
     labels:
       - "dependencies"
-      - "composer"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -34,7 +33,6 @@ updates:
       default-days: 7
     labels:
       - "dependencies"
-      - "github-actions"
     commit-message:
       prefix: "ci"
       include: "scope"
